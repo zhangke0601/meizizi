@@ -198,6 +198,7 @@ class IncomeController extends Controller
         ];
 
         $is_min = DB::table('mins')->where($where)->first();
+
         if ($is_min) {
             $pfdata->per_min_money = sprintf('%.2f', $is_min->total_money / $is_min->count);
         }
