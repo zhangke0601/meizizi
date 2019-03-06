@@ -126,6 +126,7 @@ class IncomeController extends Controller
 //        $box->removable();
 //        $box->collapsable();
         $box->style('success');
+
         $box->solid();
 //        $box->class = 'box box-info box-solid collapsed-box';
 
