@@ -221,6 +221,7 @@ class IncomeController extends Controller
         $pfdata->rate2 = $request->rate2 ?? 0;
         $pfdata->rate3 = $request->rate3 ?? 0;
         $pfdata->rate4 = $request->rate4 ?? 0;
+
         if ($request->is_line === 'on' || $request->is_line == 1) {
             $pfdata->is_line = 1;
         } else {
