@@ -196,6 +196,7 @@ class IncomeController extends Controller
             ['start', '<=', $request->month . '-31'],
             ['end', '>=', $request->month . '-01'],
         ];
+
         $is_min = DB::table('mins')->where($where)->first();
         if ($is_min) {
             $pfdata->per_min_money = sprintf('%.2f', $is_min->total_money / $is_min->count);
