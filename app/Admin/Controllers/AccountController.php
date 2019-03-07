@@ -4,9 +4,8 @@ namespace App\Admin\Controllers;
 
 use App\Admin\Extensions\BalanceButton;
 use App\Admin\Extensions\CheckRow;
-use App\Admin\Extensions\ExcelExpoter;
-use App\Models\Account;
 use App\Http\Controllers\Controller;
+use App\Models\Account;
 use App\Models\Bill;
 use App\Models\Copyright;
 use App\Models\PartnerDetail;
@@ -61,7 +60,7 @@ class AccountController extends Controller
 
         $grid->model()->where('month', '=', date('Y-m'));
         if (Admin::user()->isRole('版权方')) {
-            $copyright = Copyright::query()->where('admin_user_id','=', Admin::user()->id)->pluck('id')->toArray();
+            $copyright = Copyright::query()->where('admin_user_id', '=', Admin::user()->id)->pluck('id')->toArray();
             $whereOr1 = [
                 ['type', '=', 1],
                 ['r_id', '=', $copyright[0]]
@@ -69,7 +68,7 @@ class AccountController extends Controller
         }
 
         if (Admin::user()->isRole('制作方')) {
-            $producer = Producer::query()->where('admin_user_id','=', Admin::user()->id)->pluck('id')->toArray();
+            $producer = Producer::query()->where('admin_user_id', '=', Admin::user()->id)->pluck('id')->toArray();
             $whereOr2 = [
                 ['type', '=', 2],
                 ['r_id', '=', $producer[0]]
@@ -83,18 +82,18 @@ class AccountController extends Controller
 
         $grid->disableFilter();
 
-        $grid->model()->with(['copyright','producer'])->orderby('now_bills','desc');
+        $grid->model()->with(['copyright', 'producer'])->orderby('now_bills', 'desc');
 
 //        $grid->id('Id');
         $grid->month('时间');
-        $grid->type('类型')->display(function($type) {
+        $grid->type('类型')->display(function ($type) {
             if ($type == 1) {
                 return '版权方';
             } else {
                 return '制作方';
             }
         });
-        $grid->r_id('合作方')->display(function($r_id) {
+        $grid->r_id('合作方')->display(function ($r_id) {
             if ($this->type == 1) {
                 return $this->copyright->company_name;
             } else {
@@ -219,29 +218,29 @@ class AccountController extends Controller
 //        $grid->disableFilter();
 
         /*筛选条件*/
-        $grid->filter(function($filter){
+        $grid->filter(function ($filter) {
 
             // 去掉默认的id过滤器
             $filter->disableIdFilter();
 
-            $filter->column(1/3, function ($filter) {
-                $filter->equal('month','起始月份')->datetime(['format' => 'YYYY-MM']);
+            $filter->column(1 / 3, function ($filter) {
+                $filter->equal('month', '起始月份')->datetime(['format' => 'YYYY-MM']);
 
             });
-            $filter->column(1/3, function ($filter) {
-                $filter->equal('month2','结束月份')->datetime(['format' => 'YYYY-MM']);
+            $filter->column(1 / 3, function ($filter) {
+                $filter->equal('month2', '结束月份')->datetime(['format' => 'YYYY-MM']);
 
             });
 
-            $filter->column(1/3, function ($filter) {
+            $filter->column(1 / 3, function ($filter) {
                 $whereOr1 = [];
                 $whereOr2 = [];
                 if (Admin::user()->isRole('版权方')) {
-                    $copyright = Copyright::query()->where('admin_user_id','=', Admin::user()->id)->pluck('id')->toArray();
+                    $copyright = Copyright::query()->where('admin_user_id', '=', Admin::user()->id)->pluck('id')->toArray();
                     $whereOr1[] = ['copyright_id', '=', $copyright[0]];
                 }
                 if (Admin::user()->isRole('制作方')) {
-                    $producer = Producer::query()->where('admin_user_id','=', Admin::user()->id)->pluck('id')->toArray();
+                    $producer = Producer::query()->where('admin_user_id', '=', Admin::user()->id)->pluck('id')->toArray();
                     $whereOr2[] = ['producer_id', '=', $producer[0]];
                 }
                 $options = DB::table('cartoons')
@@ -250,17 +249,17 @@ class AccountController extends Controller
                             ->orWhere($whereOr2);
                     })
                     ->get()->toArray();
-                $selectOption = ['0'=>'全部作品'];
+                $selectOption = ['0' => '全部作品'];
                 foreach ($options as $option) {
                     $selectOption[$option->id] = $option->cartoon_name;
                 }
-                $filter->equal('cartoon_id','作品名称')->select($selectOption);
+                $filter->equal('cartoon_id', '作品名称')->select($selectOption);
             });
 
         });
 
 
-        $grid->column('month','年月日期');
+        $grid->column('month', '年月日期');
         $grid->column('cartoon_name', '作品名称');
         if (Admin::user()->isRole('版权方') || Admin::user()->isAdministrator()) {
             $grid->company_name('版权方');
@@ -274,17 +273,17 @@ class AccountController extends Controller
         $month2 = \Illuminate\Support\Facades\Request::get('month2');
         $cartoon_id = \Illuminate\Support\Facades\Request::get('cartoon_id');
         if ($pf_id) {
-            $pfs = DB::table('pfs')->where('id','=', $pf_id)->get()->toArray();
+            $pfs = DB::table('pfs')->where('id', '=', $pf_id)->get()->toArray();
         } else {
             if (Admin::user()->isRole('版权方') || Admin::user()->isAdministrator()) {
-                $pfs = DB::table('pfs')->where('type', '=', 1)->orWhere('type','=',3)->orderBy('type','asc')->get()->toArray();
+                $pfs = DB::table('pfs')->where('type', '=', 1)->orWhere('type', '=', 3)->orderBy('type', 'asc')->get()->toArray();
             } else {
-                $pfs = DB::table('pfs')->where('type', '=', 1)->orderBy('type','asc')->get()->toArray();
+                $pfs = DB::table('pfs')->where('type', '=', 1)->orderBy('type', 'asc')->get()->toArray();
             }
         }
 //        dump($pfs);
         foreach ($pfs as $pf) {
-            if (in_array($pf->pfname, ['奇热','看漫画','多蕴','微博动漫','慢看（分成）'])) {
+            if (in_array($pf->pfname, ['奇热', '看漫画', '多蕴', '微博动漫', '慢看（分成）'])) {
                 continue;
             }
             $sum1 = 0;
@@ -301,7 +300,7 @@ class AccountController extends Controller
                 $where[] = ['cartoon_id', '=', $cartoon_id];
             }
             if (Admin::user()->isRole('版权方') || Admin::user()->isAdministrator()) {
-                $copyright = Copyright::query()->where('admin_user_id','=', Admin::user()->id)->pluck('id')->toArray();
+                $copyright = Copyright::query()->where('admin_user_id', '=', Admin::user()->id)->pluck('id')->toArray();
                 $sum1 = DB::table('pfdatas')
                     ->where('pf_id', '=', $pf->id)
                     ->where('infact_money_status', '=', 3)
@@ -312,7 +311,7 @@ class AccountController extends Controller
 
 
             if (Admin::user()->isRole('制作方') || Admin::user()->isAdministrator()) {
-                $copyright = Producer::query()->where('admin_user_id','=', Admin::user()->id)->pluck('id')->toArray();
+                $copyright = Producer::query()->where('admin_user_id', '=', Admin::user()->id)->pluck('id')->toArray();
                 $sum2 = DB::table('pfdatas')
                     ->where('pf_id', '=', $pf->id)
                     ->where('infact_money_status', '=', 3)
@@ -326,12 +325,12 @@ class AccountController extends Controller
                 $sum2 = 100;
             }
 
-            if ($sum1 < 50 && $sum2 < 50  && !Admin::user()->isAdministrator()) {
+            if ($sum1 < 50 && $sum2 < 50 && !Admin::user()->isAdministrator()) {
                 continue;
             }
 
-            $grid->column($pf->sortname, '渠道'.$pf->id)
-                ->display(function($money) use($pf){
+            $grid->column($pf->sortname, '渠道' . $pf->id)
+                ->display(function ($money) use ($pf) {
                     if ($money['money'] < 50) {
                         return '';
                     }
@@ -340,8 +339,8 @@ class AccountController extends Controller
         }
 
         if (Admin::user()->isRole('制作方') || Admin::user()->isAdministrator()) {
-            $grid->column('min_money', '其他')->display(function($min_money){
-                return sprintf('%.2f',$min_money);
+            $grid->column('min_money', '其他')->display(function ($min_money) {
+                return sprintf('%.2f', $min_money);
 //                return $min_money;
             });
         }
@@ -368,22 +367,22 @@ class AccountController extends Controller
     {
         $grid = new Grid(new Account);
 
-        $grid->filter(function($filter){
+        $grid->filter(function ($filter) {
             // 去掉默认的id过滤器
             $filter->disableIdFilter();
 
-            $filter->column(1/3, function ($filter) {
-                $filter->equal('month','年/月份')->datetime(['format' => 'YYYY-MM']);
+            $filter->column(1 / 3, function ($filter) {
+                $filter->equal('month', '年/月份')->datetime(['format' => 'YYYY-MM']);
 
             });
-            $filter->column(1/3, function ($filter) {
+            $filter->column(1 / 3, function ($filter) {
 
-                $selectOption = ['1'=>'版权方', '2'=>'制作方'];
+                $selectOption = ['1' => '版权方', '2' => '制作方'];
 
-                $filter->equal('type','合作类型')->select($selectOption);
+                $filter->equal('type', '合作类型')->select($selectOption);
 
             });
-            $filter->column(1/3, function ($filter) {
+            $filter->column(1 / 3, function ($filter) {
 
                 $filter->equal('name', '合作方');
             });
@@ -391,8 +390,8 @@ class AccountController extends Controller
 
         $grid->id('Id');
         $grid->month('年月份');
-        $grid->type('类型')->display(function($type) {
-            if ($type == 1){
+        $grid->type('类型')->display(function ($type) {
+            if ($type == 1) {
                 return '版权方';
             } else {
                 return '制作方';
@@ -400,7 +399,7 @@ class AccountController extends Controller
         });
         $grid->name('合作方');
         $grid->money('结算金额');
-        $grid->is_comfirm('是否确认')->display(function($is_comfirm){
+        $grid->is_comfirm('是否确认')->display(function ($is_comfirm) {
             if ($is_comfirm == 1) {
                 return '是';
             } else {
@@ -461,7 +460,7 @@ $(document).on('change', ".relation_id", function () {
 EOT;
         Admin::script($script);
 
-        $form->saving(function (Form $form){
+        $form->saving(function (Form $form) {
             if ($form->is_comfirm == 'on') {
                 if ($form->type == 1) {
                     DB::table('pfdatas')
@@ -486,7 +485,7 @@ EOT;
         });
 
         $form->date('month', '年月份')->format('YYYY-MM')->required();
-        $form->select('type', '合作方类型')->options(['1'=>'版权方','2'=>'制作方'])->load('relation_id', '/api/relation')->required()->setWidth(4);
+        $form->select('type', '合作方类型')->options(['1' => '版权方', '2' => '制作方'])->load('relation_id', '/api/relation')->required()->setWidth(4);
         $form->select('relation_id', '版权方/制作方')->required()->help('请先选择合作方类型')->setWidth(4);
 
         $form->currency('money', '结算金额')->symbol('￥')->rules('numeric|min:0')->required();
@@ -523,8 +522,8 @@ EOT;
 
         $form->hidden('id', 'id')->default($id);
 
-        $form->display('month','年月份')->setWidth(1);
-        $form->display('type', '合作方类型')->setWidth(2)->with(function($type){
+        $form->display('month', '年月份')->setWidth(1);
+        $form->display('type', '合作方类型')->setWidth(2)->with(function ($type) {
             if ($type == 1) {
                 return '版权方';
             } else {
@@ -533,12 +532,12 @@ EOT;
         });
 
         if ($account->type == 1) {
-            $name = Copyright::query()->where('id','=', $account->relation_id)->pluck('company_name')->toArray();
+            $name = Copyright::query()->where('id', '=', $account->relation_id)->pluck('company_name')->toArray();
         } else {
-            $name = Producer::query()->where('id','=', $account->relation_id)->pluck('producer_name')->toArray();
+            $name = Producer::query()->where('id', '=', $account->relation_id)->pluck('producer_name')->toArray();
         }
 
-        $form->display('relation_id', '版权方/制作方')->setWidth(3)->with(function($relation_id) use ($name) {
+        $form->display('relation_id', '版权方/制作方')->setWidth(3)->with(function ($relation_id) use ($name) {
             return $name[0];
         });
 
@@ -568,7 +567,7 @@ EOT;
 
     public function editOne(Request $request)
     {
-        DB::table('accounts')->where('id',$request->id)
+        DB::table('accounts')->where('id', $request->id)
             ->update([
                 'money' => $request->money,
                 'is_comfirm' => $request->is_comfirm === 'on' ? 1 : 0,
