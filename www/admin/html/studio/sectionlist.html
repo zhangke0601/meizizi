@@ -1,0 +1,326 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+require_once($base_dir.'model/clsCartoonSectioninfos.php');
+$title = '';
+$nav = 'index';
+require_once($base_dir.'www/admin/html/studio/head.html');
+
+$cart = new Cartooninfos();
+$sect = new CartoonSectioninfos();
+$ctid = GetItemFromArray($_GET,'ctid');
+$cartinfo = $cart->find($ctid);
+//$sectioninfos = $sect->getinfos(sprintf('ctid=%d', $ctid));
+
+$search = GetItemFromArray($_GET,'search');
+$p = GetItemFromArray($_GET,'p');
+list($count,$sectioninfos) = $sect->GetCartoonSectionInfosByParams($ctid,$p,$search);
+$pagecount = ceil($count/COUNT_PER_PAGE);
+foreach($sectioninfos as $idx=>$info)
+{
+  $content = json_decode($info['ctscontent'], true);
+  $sectioninfos[$idx]['ctsimgcount'] = count($content);
+  $sectioninfos[$idx]['ctsvip'] = ($info['ctsvip'] == 5  ?  '是' : '否');
+}
+if(intval($p) < 1)
+$p = 1;
+?>
+
+<div class="container" style="height:64px;font-size:17px;margin-top:20px;margin-bottom:10px;min-height:64px">
+ <div class="row" style="line-height:64px;margin:0px 0px 0px 10px;color:#323232">
+   <?php echo $cartinfo['ctname'];?>
+ </div>
+</div>
+
+<div class="container" style="background-color:white;padding-left:20px;padding-right:20px">
+  <div class="row" style="margin-top:20px;margin-bottom:20px">
+    <form>
+    <input id="search" name="search" placeholder="输入章节名称查询" class="form-control" style="width:400px;float:left;margin-right:10px" value="<?php echo $search;?>"/>
+    <input id="ctid" name="ctid" type="hidden" value="<?php echo $ctid;?>"/>
+    <input type="submit" class="btn btn-primary btn-sm" value="查询">
+    <a class="btn btn-primary btn-sm pull-right" href="sectioninfo.html?ctid=<?php echo $ctid;?>" style="width:90px">新增章节</a>
+    <a class="btn btn-primary btn-sm pull-right" href="index.html" style="margin-right:30px;width:90px">返回</a>
+    <a class="btn btn-primary btn-sm pull-right" href="javascript:downimgtest()" style="margin-right:30px;width:90px">下载已选</a>
+    </form>
+  </div>
+  <div class="row" style="margin-bottom:30px">
+    <table id="choose" class="table" >
+      <thead><td>ID</td><td>章节名称</td><td>启用状态</td><td>图片数量</td><td>排序</td><td>vip</td><td>封面</td><td>添加时间</td><td>操作</td><td><input type="checkbox" id="checkboxAll"></td></thead>
+    <?php
+      foreach($sectioninfos as $info)
+      {
+        echo sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
+           $info['ctsid'], $info['ctsname'],
+           $ctstates[$info['ctsstate']], $info['ctsimgcount'],
+           $info['ctssort'],$info['ctsvip'],empty($info['ctscover']) ? sprintf('<a style="color:red" href="sectioninfo.html?ctid=%d&ctsid=%s" target="_blank">无</a>',$ctid, $info['ctsid']):sprintf('<a style="color:green" href="sectioninfo.html?ctid=%d&ctsid=%s" target="_blank">有</a>',$ctid, $info['ctsid']),$info['ctscreatetime'],
+           sprintf('<a href="javascript:void(0)" onclick="preview(%d);">预览</a>
+           <a href="javascript:void(0)" onclick="getreleasestates(%d);" style="margin-left:10px">发布情况</a>
+           <a href="javascript:void(0)" style="margin-left:10px;margin-right:10px" onclick="edittest(%d,%s)">编辑</a>
+           <a onclick="deletesection(%d)" style="margin-left:10px;" href="javascript:void(0)">删除</a>', $info['ctsid'], $info['ctsid'], $ctid, $info['ctsid'], $info['ctsid']),
+           sprintf('<input type="checkbox" name="imgdownctsid" value="%s">',$info['ctsid'])
+        );
+      }
+    ?>
+    </table>
+      <div class="text-center"><span class="text-center"><?php echo get_view_for_page_index_list($p, $pagecount, '?'.build_query(array('p'=>'%s')));?></span></div>
+
+  </div>
+
+</div>
+<!-- 预览 -->
+<div class="modal fade bs-example-modal-lg" id="ctsModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">章节预览</h4>
+            </div>
+            <div class="modal-body" style="text-align:center" id="ctsimgcontent" >
+                    <div >
+                        <img id="ctsimgurl" style="width: 500px;height: 300px;">
+                    </div>
+                    <a onclick="lastpage()" >上一页</a>
+                    <a onclick="nextpage()" >下一页</a>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 发布情况 -->
+<div class="modal fade bs-example-modal-lg" id="releaseModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="releaselabel">发布情况</h4>
+      </div>
+      <div class="modal-body" style="text-align:center" id='releaseinfos'>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade bs-example-modal-lg" id="copyModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">章节版本预览</h4>
+            </div>
+            <div class="modal-body" style="text-align:center" id="ctscopy" >
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade bs-example-modal-lg" id="DownimgCopyModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myDownimgModalLabel">图片下载版本选择</h4>
+            </div>
+            <div class="modal-body" style="text-align:center" id="ctsdownimgcopy" >
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form style="display: none" id="downform" action="/action/thirdfeeaction.php" method="POST">
+    <input type="hidden" name="ctsid" id="imgctsid">
+    <input type="hidden" name="type"  value="downimg" >
+</form>
+
+
+
+<script>
+    $("#checkboxAll").click(function(){
+        if(this.checked){
+            $("#choose :checkbox").prop("checked", true);
+        }else{
+            $("#choose :checkbox").prop("checked", false);
+        }
+    });
+
+    function downSelImg(pfid){
+        $("input:checkbox[name='imgdownctsid']").each(function () {
+            if($(this).prop("checked")==true){
+                var downctsid = $(this).val();
+                var url = '/action/thirdfeeaction.php?type=downimg&ctsid='+downctsid+'&pfid='+pfid;
+                console.log(url);
+                window.open(url);
+            }
+        });
+    }
+
+    function downimg(ctsid){
+        $('#imgctsid').val(ctsid);
+        $('#downform').submit();
+
+    }
+    var page = 1;
+    var imgurlinfos = {};
+    function preview(ctsid)
+    {
+        var type = 'getsectionimgurls';
+        <?php
+        $params = array('type','ctsid');
+        echo generate_ajax($params,'showctsimg','/action/cartoonaction.php');
+        ?>
+    }
+function showctsimg(data)
+{
+  imgurlinfos = data.imgurl;
+  imgurlcount = data.imgirlcount;
+
+  //$('#ctsimgurl').attr('src',imgurlinfos['1']['imgurl']);
+  //page = 1;
+  var ht = '';
+  for(var i in imgurlinfos)
+  {
+    if(data.uid == 33){
+        ht += '<img src="'+imgurlinfos[i]['imgurl']+'" style="width:100%;margin-bottom:00px">';
+    }  else{
+        ht += '<img src="'+imgurlinfos[i]['imgurl']+'-origin" style="width:100%;margin-bottom:00px">';
+    }
+
+    //ht += '<hr>';
+  }
+  if(ht.length > 0)
+    $('#ctsimgcontent').html(ht);
+  else
+    $('#ctsimgcontent').html('<center>暂无图片</center>');
+  $('#ctsModal').modal('show');
+}
+    function nextpage()
+    {
+        var pagenumber = page+1;
+        if( pagenumber > imgurlcount)
+        {
+            alert('已是最后一页');
+        }
+        else
+        {
+            $('#ctsimgurl').attr('src',imgurlinfos[pagenumber]['imgurl']);
+            page = pagenumber;
+        }
+    }
+    function lastpage()
+    {
+        var pagenumber = page-1;
+        if(pagenumber < 1)
+            alert('已是第一页了');
+        else
+        {
+            $('#ctsimgurl').attr('src',imgurlinfos[pagenumber]['imgurl']);
+            page = pagenumber;
+        }
+
+    }
+</script>
+  <script>
+function deletesection(ctsid)
+{
+  if(confirm('确认删除？'))
+  {
+    var type = 'deletesectioninfo';
+    <?php
+    $params = array('type','ctsid');
+    echo generate_ajax($params,'cb','/action/cartoonaction.php');
+    ?>
+  }
+}
+
+function cb(data)
+{
+  window.location.reload();
+}
+  </script>
+  
+<script>
+function getreleasestates(ctsid)
+{
+  var type = 'getreleaseinfosbyctsid';
+  <?php
+  $params = array('type','ctsid');
+  echo generate_ajax($params,'releasestatescb','/action/cartoonaction.php');
+  ?>
+}
+
+function releasestatescb(data)
+{
+  $('#releaselabel').html('章节名：'+data.result.ctsinfo.ctsname);
+  var ht = '<table class="table">';
+  ht += '<thead><td>ID</td><td>章节名称</td><td>状态</td><td>平台</td><td>操作</td></thead>';
+  if(data.result.ctrrinfos.length > 0)
+  {
+    for(var i in data.result.ctrrinfos)
+    {
+      ht += '<tr><td>'+data.result.ctrrinfos[i].ctrrid+'</td><td>'+data.result.ctrrinfos[i].ctsinfo.ctsname+'</td><td>'+data.result.ctrrinfos[i].ctrrstatename+'</td><td>'+data.result.ctrrinfos[i].pfname+'</td><td></td></tr>';
+    }
+  }
+  else
+  {
+    ht += '<tr><td colspan="5" style="text-align:center">无记录</td></tr>';
+  }
+  ht += '</table>';
+ 
+  $('#releaseinfos').html(ht);
+  $('#releaseModal').modal('show');
+}
+
+  </script>
+
+  <script>
+function edittest(ctid,ctsid)
+{
+  var type = 'getsectioncopyinfos';
+  <?php
+  $params = array('type','ctid','ctsid');
+  echo generate_ajax($params,'copyinfoscb','/action/cartoonaction.php');
+  ?>
+  //window.location.href='sectioninfo.html?ctid='+ctid+'&ctsid='+ctsid;
+}
+
+function copyinfoscb(data)
+{
+  if(data.result.copyinfos.length > 0)
+  {
+    var ht = '<a style="margin-right:20px" href="sectioninfo.html?ctid='+data.result.ctid+'&ctsid='+data.result.ctsid+'">通用版</a>';
+    for(var i in data.result.copyinfos)
+    {
+      ht += '<a style="margin-right:20px" href="sectioninfo.html?ctid='+data.result.ctid+'&ctsid='+data.result.copyinfos[i].ctsid+'&pfid='+data.result.copyinfos[i].ctssource+'">'+data.result.copyinfos[i].ctssourcename+'版</a>';
+    }
+    $('#ctscopy').html(ht);
+    $('#copyModal').modal('show');
+  }
+  else
+  {
+    window.location.href='sectioninfo.html?ctid='+data.result.ctid+'&ctsid='+data.result.ctsid;
+  }
+}
+
+function downimgtest()
+{
+    var ht = '<a style="margin-right:20px" href="javascript:downSelImg(0)">通用版</a>';
+    ht += '<a style="margin-right:20px" href="javascript:downSelImg(5)">腾讯版</a>';
+    $('#ctsdownimgcopy').html(ht);
+    $('#DownimgCopyModal').modal('show');
+}
+
+  </script>
+
+</body>
+</html>

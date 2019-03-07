@@ -1,0 +1,325 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+require_once($base_dir.'model/clsCartoonSectioninfos.php');
+require_once($base_dir.'model/clsNoticeinfos.php');
+$title = '公告列表';
+$nav = 'noticelist';
+require_once($base_dir.'www/admin/html/manager/head.html');
+
+$p = GetItemFromArray($_GET,'p');
+$s = GetItemFromArray($_GET,'s');
+$notice = new Noticeinfos();
+list($totalcount,$ninfos) = $notice->GetListByParam($p,$s);
+$pagecount = ceil($totalcount/COUNT_PER_PAGE);
+$uinfos = $user->getinfos();
+?>
+
+<div class="container" style="background-color:white">
+  <div class="row" style="height:35px"> <!--style="display:none"-->
+    <form>
+      <input id="s" name="s" placeholder="输入公告标题查询" class="form-control" style="width:200px;float:left;margin-right:10px" value="<?php echo $s;?>"/>
+      <input type="submit" class="btn btn-default " value="查询">
+      <a class="btn btn-primary btn-sm pull-right" onclick="editnotice(0);">新增公告</a>
+    </form>
+  </div>
+
+  <div class="row">
+    <table class="table table-bordered">
+      <thead><td>ID</td><td>标题</td><td>状态</td><td>操作</td><td>创建时间</td></thead>
+    <?php
+      foreach($ninfos as $info)
+      {
+        echo sprintf('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
+          $info['nid'],$info['ntitle'],
+          $noticepoststates[$info['nstate']],
+          sprintf('<a href="javascript:void(0)" style="cursor:pointer" onclick="editnotice(%d);">编辑</a> <a href="javascript:void(0)" style="cursor:pointer;margin:0px 10px 0px 20px;%s" onclick="postnotice(%d);">发布</a> <a href="javascript:void(0)" style="cursor:pointer;margin:0px 10px" onclick="deletenotice(%d);">删除</a>', $info['nid'], ($info['nstate']==STATE_POST)?'display:none':'', $info['nid'], $info['nid']),
+          $info['ncreatetime']);
+      }
+    ?>
+    </table>
+    <div class="text-center">
+      <span class="text-center">
+        <?php echo get_view_for_page_index($p,$pagecount,'?p=%s');?>
+      </span>
+    </div>
+  </div>
+</div>
+    </div>
+  </div>
+  
+<div class="modal fade " id="noticeModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe2">公告编辑</h4>
+      </div>
+      <div class="modal-body" id="editdetai">
+        <input type='hidden' id="nid" value="" />
+        <input type='hidden' id="nattachments" value="" />
+        <table class="table">
+          <tr><td style="width:100px">标题</td><td><input class="form-control" id="ntitle" /></td></tr>
+          <tr><td style="width:100px">内容</td><td><textarea class="form-control" style="resize:none;height:100px" id="ncontent" ></textarea></td></tr>
+          <tr><td style="width:100px">附件</td><td><input type="file" id="attachment" onchange="uploadfile(this)" style="display:none"/><a class="btn btn-primary" onclick="$('#attachment').trigger('click');">上传附件</a><span style="margin-left:10px" id="attachmentname"></span></td></tr>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" >取消</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="savenotice();">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade " id="postModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe2">公告编辑</h4>
+      </div>
+      <div class="modal-body" id="editdetai">
+        <input type='hidden' id="postnid" value="" />
+        <div class="row">
+          <div class="col-sm-6">
+            <h4>通知方式</h4>
+            <div><label><input id="nposttype1" class="nposttype" type="checkbox" value="1" /> 短信</label></div>
+          </div>
+          <div class="col-sm-6">
+            <h4>用户设置</h4>
+            <div><label><input id="nusertype1" type="radio" name="nusertype" value="1" checked onclick="clickradio();" /> 所有用户</label></div>
+            <div><label><input id="nusertype5" type="radio" name="nusertype" value="5" onclick="clickradio();"/> 指定用户</label></div>
+            <div id="userlist" style="display:none">
+              <input id="userkey" class="form-control" style="display:initial;width:160px;margin-right:10px"/><a class="btn btn-primary btn-sm" onclick="searchuser();">检索</a>
+              <div style="height:100px;overflow-y:auto">
+                <?php
+                  foreach($uinfos as $info){
+                    echo sprintf('<div style=""><label class="selectuserlabel"><input type="checkbox" class="selectuser" value="%s" data-name="%s"/> %s</label></div>', $info['uid'], $info['urealname'], $info['urealname']);
+                  }
+                                                                                                                         ?>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" >取消</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="savepostnotice();">发布</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<script>
+function emptyinfo()
+{
+  $('#nid').val('');
+  $('#ntitle').val('');
+  $('#ncontent').val('');
+  $('#nattachments').val('');
+  $('#attachmentname').html('');
+}
+
+function editnotice(nid)
+{
+  emptyinfo();
+  if(nid == 0){
+    $('#noticeModal').modal('show');
+  }else{
+    var type = 'getnoticeinfobynid';
+    <?php
+    $params = array('type','nid');
+    echo generate_ajax($params,'getnoticecb','/action/funcaction.php');
+    ?>
+  }
+}
+
+function getnoticecb(data){
+  $('#nid').val(data.result.nid);
+  $('#ntitle').val(data.result.ntitle);
+  $('#ncontent').val(data.result.ncontent);
+  $('#nattachments').val(data.result.nattachments);
+  if(data.result.nattachments.length > 0){
+    var as = JSON.parse(data.result.nattachments);
+    $('#attachmentname').html(as[0]['filename']);
+  }
+  $('#noticeModal').modal('show');
+}
+
+function savenotice(){
+  var nid = $('#nid').val();
+  var ntitle = $('#ntitle').val();
+  var ncontent = $('#ncontent').val();
+  var nattachments = $('#nattachments').val();
+  var type = 'addnotice';
+  if(nid.length > 0)
+    type = 'updatenotice';
+  if((ntitle.length>0)&&(ncontent.length)){
+    <?php
+    $params = array('type','nid','ntitle','ncontent','nattachments');
+    echo generate_ajax($params,'cb','/action/funcaction.php');
+    ?>
+  }else{
+    alert('请填写完整');
+  }
+}
+
+function deletenotice(nid)
+{
+  var type = 'deletenotice';
+  <?php
+    $params = array('type','nid');
+    echo generate_ajax($params,'cb','/action/funcaction.php');
+  ?>
+}
+function cb(data)
+{
+  window.location.reload();
+}
+</script>
+  <script>
+
+function cb(data)
+{
+  window.location.reload();
+}
+
+function clickradio(){
+  var nusertype = $("input[name='nusertype']:checked").val();
+  if(nusertype == 1)
+    $('#userlist').hide();
+  else
+    $('#userlist').show();
+}
+
+function searchuser(){
+  var key = $('#userkey').val();
+  if(key.length > 0){
+    $('.selectuser').each(function(){
+      var name = $(this).attr('data-name');
+      if(name.indexOf(key) != -1)
+        $(this).parent().show();
+      else
+        $(this).parent().hide();
+    });
+  }else{
+    $('.selectuser').parent().show();
+  }
+}
+
+function emptypostinfo()
+{
+  $('.nposttype').each(function(){
+    this.checked = false;
+  });
+  $('#nusertype1').trigger('click');
+}
+
+function postnotice(nid)
+{
+  emptypostinfo();
+
+  var type = 'getnoticeinfobynid';
+  <?php
+  $params = array('type','nid');
+  echo generate_ajax($params,'postnoticecb','/action/funcaction.php');
+  ?>
+}
+
+function postnoticecb(data)
+{
+  $('#postnid').val(data.result.nid);
+  if(data.result.nposttype == 1)
+    $('#nposttype1')[0].checked = true;
+  if(data.result.nusertype > 0)
+  {
+    $('#nusertype'+data.result.nusertype).trigger('click');
+    if(data.result.nusertype == 5){
+      $('#userlist').show();
+      var us = data.result.nuserlist.split(',');
+      $('.selectuser').each(function(){
+        var v = this.value;
+        if(us.includes(v))
+          this.checked = true;
+      });
+    }
+  }
+  $('#postModal').modal('show');
+}
+
+function savepostnotice()
+{
+  var nid = $('#postnid').val();
+  var nposttype = 0;
+  $('.nposttype').each(function(){
+    if(this.checked){
+      nposttype += parseInt(this.value);
+    }
+  });
+  var nusertype = $("input[name='nusertype']:checked").val();
+  var nuserlist = '';
+  if(nusertype == 1){
+  }else{
+    $('.selectuser').each(function(){
+      if(this.checked)
+        nuserlist += this.value+',';
+    });
+    if(nuserlist.length == 0)
+    {
+      alert('请选择用户后，再发布！');
+      return false;
+    }
+  }
+
+
+  var type = 'postnotice';
+  <?php
+    $params = array('type','nid','nposttype','nusertype','nuserlist');
+    echo generate_ajax($params,'cb','/action/funcaction.php');
+  ?>
+}
+
+  </script>
+<script>
+function uploadfile(obj)
+{
+  var id = obj.id;
+  var fd = new FormData();
+  fd.append("image", document.getElementById(id).files[0]);
+  fd.append("type", "uploadimage");
+  fd.append("objid", id);
+  var xhr = new XMLHttpRequest();
+  xhr.upload.addEventListener("progress", uploadProgress, false);
+  xhr.addEventListener("load", uploadComplete, false);
+  xhr.addEventListener("error", uploadFailed, false);
+  xhr.addEventListener("abort", uploadCanceled, false);
+  xhr.open("POST", "/action/funcaction.php");
+  xhr.send(fd);
+}
+
+function uploadProgress(evt) {}
+function uploadComplete(evt) {
+  /* This event is raised when the server send back a response */
+  var data = eval('('+evt.target.responseText+')');
+  if(data.retno == 0)
+  {
+    var a = new Array();
+    a.push({'fileurl':data.result.url, 'filename':data.result.filename});
+    $('#nattachments').val(JSON.stringify(a));
+    $('#attachmentname').html(data.result.filename);
+    alert('成功上传');
+  }
+  else
+  {
+    alert(data.msg);
+  }
+}
+function uploadFailed(evt){alert("There was an error attempting to upload the file.");}
+function uploadCanceled(evt){alert("The upload has been canceled.");}
+
+</script>
+</body>
+</html>

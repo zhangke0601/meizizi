@@ -1,0 +1,554 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+require_once($base_dir.'model/clsPlatforminfos.php');
+$title = '漫画工作室管理系统';
+$nav = 'index';
+require_once($base_dir.'www/admin/html/studio/head.html');
+
+$pf = new Platforminfos();
+$cart = new Cartooninfos();
+
+$cartinfos = $cart->getinfos(sprintf('uid=%d', $uid));
+$p = GetItemFromArray($_GET,'p');
+$search = GetItemFromArray($_GET,'search');
+list($totalcount,$cartinfos) = $cart->StudioGetCartooninfosByParams($uid,$p,$search);
+
+foreach($cartinfos as $idx=>$cartinfo)
+{
+  $cartinfos[$idx]['ctprogressname'] = $progresses[$cartinfo['ctprogress']];
+  $stat = $cart->GetReleaseStatByCtid($cartinfo['ctid']);
+  $stat = GetKeyAndValueFromArray($stat,'ctrrstate','count');
+  $cartinfos[$idx]['ctrrstat'] = $stat;
+}
+$pagecount = ceil($totalcount/COUNT_PER_PAGE);
+
+$pfinfos = $pf->getinfos('pfstate=0');
+$upfinfos = array();
+foreach($pfinfos as $idx=>$pfinfo)
+{
+  $upfinfo = $pf->existUserAndPlatform($uid,$pfinfo['pfid']);
+  if($upfinfo)
+  {
+    $upfinfo['pfinfo'] = $pfinfo;
+    $upfinfos[] = $upfinfo;
+  }
+}
+?>
+
+<div class="container" style="">
+ <div class="row"> <!--style="display:none"-->
+     <form>
+       <input id="search" name="search" placeholder="输入作品名查询" class="form-control" style="width:200px;float:left;margin-right:10px" value="<?php echo $search;?>"/>
+    <input type="submit" class="btn btn-default " value="查询">
+
+    <a class="btn btn-primary btn-sm pull-right" href="cartooninfo.html" >新增漫画作品</a>
+     </form>
+ </div>
+  <div class="row">
+    <!--<div class="addcart" style="text-align:center;padding-top:110px" onclick="window.location.href='cartooninfo.html';"><img src='/assets/images/button_add.png' style="margin-bottom:10px"/><br>新增漫画作品</div>
+    -->
+      <table class="table table-bordered" style="text-align:center">
+          <thead >
+          <td>作品名</td><td>作者</td><td>进度</td><!--<td>发布者</td>--><td>发布状态</td><td>反馈数据</td><td>发布历史</td><td>操作</td>
+          </thead>
+          <?php
+              foreach($cartinfos as $cartinfo)
+              {
+                $issuestate = 0;
+                $normalinfo = sprintf('<a href="javascript:void(0)" onclick="getissuestateinfo(%d,%d)" >待上传(%d)</a>',$cartinfo['ctid'],STATE_NOR,GetItemFromArray($cartinfo['ctrrstat'],STATE_NOR,0));
+                $failinfo = sprintf('<a href="javascript:void(0)" onclick="getissuestateinfo(%d,%d)" >上传失败(%d)</a>',$cartinfo['ctid'],STATE_UPLOADFAIL,GetItemFromArray($cartinfo['ctrrstat'],STATE_UPLOADFAIL,0));
+                $rejectinfo = sprintf('<a href="javascript:void(0)" onclick="getissuestateinfo(%d,%d)" >驳回(%d)</a>',$cartinfo['ctid'],STATE_AUTHFAIL,GetItemFromArray($cartinfo['ctrrstat'],STATE_AUTHFAIL,0));
+                $auditinfo = sprintf('<a href="javascript:void(0)" onclick="getissuestateinfo(%d,%d)" >审核中(%d)</a>',$cartinfo['ctid'],STATE_UPLOADED,GetItemFromArray($cartinfo['ctrrstat'], STATE_UPLOADED,0));
+                $succinfo = sprintf('<a href="javascript:void(0)" onclick="getissuestateinfo(%d,%d)" >通过(%d)</a>',$cartinfo['ctid'],STATE_AUTHSUCC,GetItemFromArray($cartinfo['ctrrstat'], STATE_AUTHSUCC,0));
+                  $getfeedback = sprintf('<a href="javascript:void(0)" onclick="getfeedbackinfo(%d)">查看详情</a>',$cartinfo['ctid']);
+                  $getissue = sprintf('<a href="issuehistory.html?ctid=%d">查看详情</a>',$cartinfo['ctid']);
+                  $issue = sprintf('<a href="javascript:void(0)" onclick="releasemodal(%d)"  style="">一键发布</a>',$cartinfo['ctid']);
+                  $update = sprintf('<a href="cartooninfo.html?ctid=%d" style="margin-left:10px;margin-right:10px">编辑</a>',$cartinfo['ctid']);
+                  $sectionlist = sprintf('<a href="sectionlist.html?ctid=%d" style="margin-right:10px">章节管理</a>',$cartinfo['ctid']);
+                  $del = sprintf('<a href="javascript:void(0)" onclick="deletecart(%d);" style="" >删除</a>',$cartinfo['ctid']);
+                  echo sprintf('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s %s %s %s %s</td><td>%s</td><td>%s</td>
+                  <td>%s %s %s %s</td></tr>',
+                  $cartinfo['ctname'],$cartinfo['ctauthorname'],$cartinfo['ctprogressname'],
+                  $normalinfo, $failinfo, $rejectinfo,$auditinfo,$succinfo,$getfeedback,
+                  $getissue,$issue,$update,$sectionlist,$del);
+              }
+          ?>
+      </table>
+      <div class="text-center"><span class="text-center"><?php echo get_view_for_page_index($p, $pagecount, '?'.build_query(array('p'=>'%s')));?></span></div>
+
+      <!--<?php
+      foreach($cartinfos as $cartinfo)
+      {
+        echo sprintf('<div class="onecart">
+          <img src="%s" />
+          <div style="padding:5px">
+            <div><span style="font-size:18px">%s</span></div>
+            <div><label style="font-size:15px;color:#999">%s</label>
+            <label style="font-size:15px;color:#999;float:right">%s</label></div>
+            <div style="margin-top:10px"><a href="#" style="color:#666">反馈数据</a><a href="#" style="color:#999;margin-left:10px">发布历史</a></div>
+            <hr style="margin-top:5px;margin-bottom:9px">
+            <div><a href="#" style="color:#666">一键发布</a>
+                <a href="cartooninfo.html?ctid=%d" style="color:#999;margin-left:10px;margin-right:10px">编辑</a>
+              <a href="sectionlist.html?ctid=%d" style="color:#999;margin-right:10px">章节管理</a>
+                <a href="javascript:void(0)" onclick="deletecart(%d);" style="color:#999" >删除</a></div>
+          </div>
+        </div>', $cartinfo['ctverticalimage'], $cartinfo['ctname'],
+         $cartinfo['ctauthorname'], $cartinfo['ctprogressname'],
+         $cartinfo['ctid'], $cartinfo['ctid'], $cartinfo['ctid']);
+      }
+    ?>-->
+  </div>
+    <div class="modal fade bs-example-modal-lg" id="feedbackinfo" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myModalLabel">反馈信息</h4>
+                </div>
+                <div class="modal-body" id="editdetail">
+                        <div>浏览总量:<span id="browse"></span></div>
+                        <div>收藏总量:<span id="collect"></span></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--  -->
+    <div class="modal fade bs-example-modal-lg" id="sectioninfos" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myModalLabe3">作品名：测试</h4>
+                </div>
+                <div class="modal-body" id="editdetail3">
+                    <table class="table" style="display:none">
+                        <tr><td>章节</td><td>章节名称</td><td>发布状态</td><td>发布平台</td><td>操作</td></tr>
+                        <tr><td>1</td><td>测试第一章</td><td>通过</td><td>爱奇艺</td><td><a href="">修改</a></td></tr>
+                        <tr><td>2</td><td>测试第二章</td><td>通过</td><td>百度</td><td><a href="">修改</a></td></tr>
+                    </table>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--  -->
+    <div class="modal fade bs-example-modal-lg" id="releasemodal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myModalLabe2">一键发布</h4>
+                </div>
+                <div class="modal-body" id="" style="padding-bottom:0px">
+                  <input type="hidden" id="ctid" name="ctid" />
+                  <input type="hidden" id="ctsid" name="ctsid" />
+                  <h4 style="display:none">待发布章节  <small id="unsection"></small></h4>
+                  <table class="table" style="margin-bottom:0px">
+                    <tr ><td style="width:100px">选择发布时间</td><td><input class="form-control" id="ctrrreleasetime" value="" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd HH:mm' })" data-date-format="yyyy-mm-dd" placeholder="如果需要定时发布，在这里设置时间" ></td></tr>
+                    <tr><td>选择发布平台</td><td>
+                  <div class="row">
+                  <?php
+                    foreach($upfinfos as $info)
+                    {
+                      echo sprintf('<div class="col-sm-6 upfiddiv" id="upfiddiv%d"><label><input type="checkbox" class="upfid" id="upfid%d" name="upfid%d" >&nbsp;%s</label>&nbsp;&nbsp;<label class="csreleasetypelabel"><input type="radio" class="csreleasetype" id="csreleasetype%d" name="csreleasetype" onclick="clickreleasetype(%d)" value="%s">&nbsp;是否独家</label></div>', $info['upfid'], $info['upfid'], $info['upfid'], $info['pfinfo']['pfname'], $info['upfid'],$info['upfid'],$info['upfid']);
+                    }
+                  ?>
+                  <div class="col-sm-6"><a class="btn btn-default btn-sm csreleasetypelabel"  onclick="clearfirst();">清除独家</a></div>
+                  </div>
+                  <span class="csreleasetypelabel" style="color:gray">注：选择独家时不能选择其他平台，不选择为无独家平台</span>
+                    </td></tr>
+                    <tr id="csfirstreleasetr"><td>首发状态</td><td>
+                      <div>
+                      <?php
+                    foreach($upfinfos as $info)
+                    {
+                      echo sprintf('<div style="float:left"><label><input class="csfirstrelease" id="csfirstrelease%d" name="csfirstrelease%d" type="checkbox" onclick="clickfirstrelease(%d)"/>&nbsp;%s</label>&nbsp;&nbsp;&nbsp;&nbsp;</div>', $info['upfid'], $info['upfid'], $info['upfid'], $info['pfinfo']['pfname']);
+                    }
+                      ?>
+                      </div>
+                    </td></tr>
+                    <tr style="display:none" id="prevtr"><td></td><td>
+                        <div><input type="radio" name="csprevtype" value="1" />&nbsp;提前<input id="csprevvalue1" style="width:40px;margin-left:5px;margin-right:5px">天</div>
+                        <div><input type="radio" name="csprevtype" value="2" />&nbsp;提前<input id="csprevvalue2" style="width:40px;margin-left:5px;margin-right:5px">话</div>
+                    </td></tr>
+                    <tr><td></td><td id="sectlist"></td></tr>
+                  </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick='submitrelease();'>确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+
+/* 查看发布状态信息 */
+function getissuestateinfo(ctid,state)
+{
+  var type = 'getreleaseinfosbyctidandstate';
+  <?php
+  $params = array('type','ctid','state');
+  echo generate_ajax($params,'getinfoscb','/action/cartoonaction.php');
+  ?>
+}
+
+function getinfoscb(data)
+{
+  $('#myModalLabe3').html('作品名：'+data.result.ctinfo.ctname);
+  var ht = '<table class="table">';
+  ht += '<tr><td>ID</td><td>章节名称</td><td>状态</td><td>平台</td><td>操作</td></tr>';
+  if(data.result.ctrrinfos.length > 0)
+  {
+    for(var i in data.result.ctrrinfos)
+    {
+      ht += '<tr><td>'+data.result.ctrrinfos[i].ctrrid+'</td><td>'+data.result.ctrrinfos[i].ctsinfo.ctsname+'</td><td>'+data.result.ctrrinfos[i].ctrrstatename+'</td><td>'+data.result.ctrrinfos[i].pfname+'</td><td>';
+      if(data.result.ctrrinfos[i].ctrrstate == <?php echo STATE_UPLOADFAIL;?>)
+        ht += '<a class="btn btn-primary btn-sm" onclick="reopenrelease('+data.result.ctrrinfos[i].ctrrid+')">重新提交</a>';
+      ht +='</td></tr>';
+    }
+  }
+  else
+  {
+    ht += '<tr><td colspan="5" style="text-align:center">无记录</td></tr>';
+  }
+  ht += '</table>';
+  $('#editdetail3').html(ht);
+  $('#sectioninfos').modal('show');
+}
+
+
+/* 查看反馈数据 */
+function getfeedbackinfo(ctid)
+{
+  var type = 'getstatbyctid';
+  <?php
+  $params = array('type','ctid');
+  echo generate_ajax($params,'getfeedcb', '/action/cartoonaction.php');
+  ?>
+}
+
+function getfeedcb(data)
+{
+  var ht = '<div class="tabbable">';
+  ht += '		<ul class="nav nav-tabs" id="myTab">';
+  for(var i in data.result.tabs)
+  {
+    var c = '';
+    if(i == 0)
+      c = 'active';
+		ht += '<li class="'+c+'">';
+		ht += '  <a data-toggle="tab" href="#home'+i+'">';
+		ht += '	   <i class="green bigger-110"></i>';
+	  ht += '		'+data.result.tabs[i]+'</a></li>';
+  }
+  ht += '</ul>';
+
+  ht += '<div class="tab-content">';
+  for(var i in data.result.tabs)
+  {
+    var c = '';
+    if(i == 0)
+      c = 'active';
+	  ht += '<div id="home'+i+'" class="tab-pane '+c+'">';
+    if(i == 0)
+    {
+      ht += '<table class="table">';
+      ht += '<tr><td>日期</td><td>作品名</td>';
+      for(var k in data.result.pfinfos)
+      {
+        ht += '<td>'+data.result.pfinfos[k].pfname+'</td>';
+      }
+      ht += '<td>合计</td></tr>';
+      for(var j in data.result.sdinfos)
+      {
+        ht += '<tr><td>'+j+'</td>';
+        ht += '<td>'+data.result.ctinfo.ctname+'</td>';
+        var total = 0;
+        for(var k in data.result.pfinfos)
+        {
+          var pfid = data.result.pfinfos[k].pfid;
+          if(data.result.sdinfos[j][pfid])
+          {
+            if(data.result.sdinfos[j][pfid].ctsddayincome.length > 0)
+            {
+              ht += '<td>'+data.result.sdinfos[j][pfid].ctsddayincome+'</td>';
+              total += parseFloat(data.result.sdinfos[j][pfid].ctsddayincome.replace(',',''));
+            }
+            else
+              ht += '<td>-</td>';
+          }
+          else
+            ht += '<td>-</td>';
+        }
+        ht += '<td>'+total+'</td></tr>';
+      }
+
+      ht += '</table>';
+    }
+
+	  ht += '</div>';
+  }
+  ht += '							</div>';
+  ht += '				</div>';
+
+  $('#editdetail').html(ht);
+  $('#feedbackinfo').modal('show');
+}
+
+/* 查看 发布历史 */
+function getissueinfo(ctid)
+{
+  $('#browse').html('暂无');
+  $('#collect').html('暂无');
+  //$('#browse').html(ctid);
+  //$('#collect').html(ctid);
+  $('#feedbackinfo').modal('show');
+}
+
+function deletecart(ctid)
+{
+  if(confirm('确认删除？'))
+  {
+  var type = 'deletecartoon';
+  <?php
+    $params = array('type','ctid');
+    echo generate_ajax($params,'deletecb','/action/cartoonaction.php');
+  ?>
+  }
+
+}
+function deletecb(data)
+{
+  window.location.reload();
+}
+
+function releasemodal(ctid)
+{
+  $('#ctid').val(ctid);
+  var type = 'unreleasesectioninfo';
+  <?php
+    $params = array('type','ctid');
+    echo generate_ajax($params,'releasemodalcb', '/action/cartoonaction.php');
+  ?>
+}
+
+function releasemodalcb(data)
+{
+  if(data.result.sectinfos.length > 0)
+  {
+    $('.upfiddiv').show();
+    if(data.result.csinfos.length == 0)
+    {
+      $('.csreleasetypelabel').show();
+      $('#csfirstreleasetr').show();
+      //$('#ctsid').val(data.result.section.ctsid);
+      //$('#unsection').html(data.result.section.ctsid+' '+data.result.section.ctsname);
+    }
+    else
+    {
+      if(data.result.csreleasetype > 0) //独家
+      {
+        $('.upfiddiv').hide();
+        $('#upfiddiv'+data.result.csreleasetype).show();
+      }
+      $('.csreleasetypelabel').hide();
+      $('#csfirstreleasetr').hide();
+    }
+    $('#sectlist').html('');
+    var ht = '<div><small style="color:gray">注：已经提交的章节不会重新发布，可以放心选择</small></div>';
+    for(var i in data.result.sectinfos)
+    {
+      ht += '<div><label><input data-id='+i+' onclick="clicksection(this)" type="checkbox" id="sectionid'+data.result.sectinfos[i].ctsid+'" class="sectionid" value="'+data.result.sectinfos[i].ctsid+'"/>&nbsp;'+(parseInt(i)+1)+' '+data.result.sectinfos[i].ctsname+'</label><small style="color:gray">'+data.result.sectinfos[i].desc+'</small></div>';
+    }
+    $('#sectlist').html(ht);
+
+    $('#releasemodal').modal('show');
+  }
+  else
+  {
+    alert('没有漫画章节');
+  }
+}
+
+var upfinfos = <?php echo json_encode($upfinfos);?>;
+function submitrelease()
+{
+  if(confirm('确认信息无误后发布，确认吗？'))
+  {
+    var ctid = $('#ctid').val();
+    var ctsid = $('#ctsid').val();
+    var csreleasetime = $('#csreleasetime').val();
+    var ctrrreleasetime = $('#ctrrreleasetime').val();
+    var upfids = '';
+    var firstids = '';
+    var sectionids = '';
+    //var retype = $('#csreleasetype'+upfinfos[i].upfid).is(':checked');
+    var csreleasetype = $("input[name='csreleasetype']:checked").val();
+    for(var i in upfinfos)
+    {
+      var selected = $('#upfid'+upfinfos[i].upfid).is(':checked');
+      if(selected)
+        upfids += upfinfos[i].upfid+',';
+
+      var first = $('#csfirstrelease'+upfinfos[i].upfid).is(':checked');
+      if(first)
+        firstids += upfinfos[i].upfid+',';
+    }
+
+    $('.sectionid').each(function(){
+      if(this.checked)
+        sectionids += this.value+',';
+    });
+
+    if(upfids.length > 0)
+    {
+      if(firstids.length > 0)
+      {
+        var csprevtype = $("input[name='csprevtype']:checked").val();
+        if(csprevtype == undefined)
+        {
+          alert('请选择提前信息');
+          return ;
+        }
+        else
+        {
+          var val = $('#csprevvalue'+csprevtype).val();
+          if(val.length == 0)
+          {
+            alert('请输入提前天数或话数');
+            return ;
+          }
+        }
+      }
+
+      if(sectionids.length == 0)
+      {
+        alert('请选择要发布章节');
+        return ;
+      }
+
+      var csprevtype = $("input[name='csprevtype']:checked").val();
+      var csprevvalue = $('#csprevvalue'+csprevtype).val();
+      if(csreleasetype == undefined)
+        csreleasetype = 0;
+
+      var type = 'submitrelease';
+      <?php
+      $params = array('type','ctid','sectionids','upfids','firstids','ctrrreleasetime', 'csprevtype','csprevvalue','firstids','csreleasetype');
+      echo generate_ajax($params,'submitreleasecb','/action/cartoonaction.php');
+      ?>
+    }
+    else
+    {
+      alert('请选择平台');
+    }
+    //alert(upfids);
+  }
+}
+
+function submitreleasecb(data)
+{
+  alert('提交成功');
+  $('#releasemodal').modal('hide');
+  window.location.reload();
+}
+
+function isEmptyObject(obj){
+  for(var key in obj){
+    return false
+  };
+  return true
+};
+
+function clickreleasetype(upfid)
+{
+  $('.upfid').attr('disabled', true);
+  $('.csfirstrelease').attr('disabled','true');
+  $('.csfirstrelease').each(function(){
+    this.checked = false;
+  });
+  $('.upfid').each(function(){
+    if(this.id == 'upfid'+upfid)
+      this.checked = true;
+    else
+      this.checked = false;
+  });
+}
+
+function clickfirstrelease(upfid)
+{
+  var count = 0;
+  $('.csfirstrelease').each(function(){
+    if(this.checked)
+    {
+      $('#upfid'+upfid)[0].checked = true;
+      ++count;
+    }
+  });
+  if(count > 2)
+  {
+    alert('首发最多两个平台，请重新选择');
+  }
+  if(count > 0)
+    $('#prevtr').show();
+  else
+    $('#prevtr').hide();
+}
+
+function clearfirst()
+{
+  $('.csreleasetype').each(function(){
+    this.checked = false;
+  });
+  $('.upfid').removeAttr('disabled');
+  $('.csfirstrelease').removeAttr('disabled');
+}
+
+function clicksection(obj)
+{
+  var dataid = $(obj).attr('data-id');
+  $('.sectionid').each(function(){
+    var did = $(this).attr('data-id');
+    if(obj.checked)
+    {
+      if(did <= dataid)
+        this.checked = true;
+      else
+        this.checked = false;
+    }
+    else
+    {
+      if(did > dataid)
+        this.checked = false;
+    }
+  });
+}
+
+
+function reopenrelease(ctrrid)
+{
+  var type = 'reopenrelease';
+  <?php
+  $params = array('type','ctrrid');
+  echo generate_ajax($params,'cb','/action/cartoonaction.php');
+  ?>
+}
+
+function cb(data)
+{
+  window.location.reload();
+}
+
+</script>
+</body>
+</html>

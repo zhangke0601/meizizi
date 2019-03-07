@@ -1,0 +1,162 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+$title = '美滋滋管理后台';
+$nav = 'index';
+require_once($base_dir.'www/admin/html/manager/head.html');
+
+$ugroupid = $uinfo['ugroupid'];
+$ugroupname = '超级管理员';
+$tab = GetItemFromArray($_GET,'tab');
+?>
+
+<div class="container" style="background-color:white">
+
+  <div class="tabbable tabs-left">
+    <ul class="nav nav-tabs" id="myTab3" style="margin-top:11px">
+      <li class="active">
+        <a data-toggle="tab" href="#home3" id="home3a">
+          个人信息 
+        </a>
+      </li>
+      <li class="">
+        <a data-toggle="tab" href="#profile3" id="profile3a">
+          编辑我的资料
+        </a>
+      </li>
+      <li class="">
+        <a data-toggle="tab" href="#dropdown13" id="dropdown13a">
+          修改密码
+        </a>
+      </li>
+    </ul>
+    <div class="tab-content" style="border:0px;border-left:1px;padding-top:12px">
+      <div id="home3" class="tab-pane active">
+        <div class="row" style="width:500px;margin:0 auto;">
+          <div style="padding-top:10px">
+            <table class="table table-bordered" style="">
+              <thead><td colspan=2>个人信息</td></thead>
+              <tr><td style="text-center-right">用户名：</td><td><?php echo $uinfo['umobile'];?></td></tr>
+              <tr><td style="text-center-right">管理组：</td><td><?php echo $ugroupname;?></td></tr>
+              <tr><td style="text-center-right">上次登录：</td><td><?php echo $uinfo['ulastlogintime'];?></td></tr>
+              <tr><td style="text-center-right">上次登录IP：</td><td><?php echo $uinfo['ulastloginip'];?></td></tr>
+              <tr><td style="text-center-right">登录次数</td><td><?php echo $uinfo['ulogintimes'];?></td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div id="profile3" class="tab-pane">
+        <div class="row" style="width:500px;margin:0 auto;">
+          <div style="padding-top:10px">
+            <table class="table table-bordered" style="">
+              <thead><td colspan=2>个人信息</td></thead>
+              <tr><td style="text-center-right">真实姓名：</td><td><input class="form-control" id="urealname" name="urealname" value='<?php echo $uinfo['urealname']?>'></td></tr>
+              <tr><td style="text-center-right">性别：</td><td>
+                  <label><input type='radio' id="sex0" name="usex" value="<?php echo SEX_NAN;?>" <?php if($uinfo['usex']==SEX_NAN) echo 'checked';?> />&nbsp;男</label>&nbsp;&nbsp;
+                  <label><input type='radio' id="sex10" name="usex" value="<?php echo SEX_NV;?>" <?php if($uinfo['usex']==SEX_NV) echo 'checked';?> />&nbsp;女</label>
+                </td></tr>
+                <tr><td colspan=2 style="text-align:center"><button class="btn btn-primary btn-sm" onclick="saveinfo();">保存</button></td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div id="dropdown13" class="tab-pane ">
+        <div class="row" style="width:500px;margin:0 auto;">
+          <div style="padding-top:10px">
+            <table class="table table-bordered" style="">
+              <thead><td colspan=2>个人信息</td></thead>
+              <tr><td style="text-center-right">旧密码：</td><td><input  class="form-control" id="uoldpwd" name="uoldpwd" placeholder="请输入旧密码" ></td></tr>
+              <tr><td style="text-center-right">新密码：</td><td><input class="form-control" id="unewpwd" name="unewpwd" type='password' placeholder="至少6位，数字字母组合" ></td></tr>
+              <tr><td style="text-center-right">确认密码：</td><td><input class="form-control" id="unewpwd2" name="unewpwd2" type="password" placeholder="至少6位，数字字母组合" ></td></tr>
+              <tr><td style="text-center-right">验证码：</td><td><input class="form-control" id="vcode" name="vcode" style="width:100px;float:left" ><img src="/html/user/img.php?a=<?php echo time();?>" onclick="imgfresh();" id="imgvcode" style="margin-top:4px;margin-left:10px"/></td></tr>
+              <tr><td colspan=2 style="text-align:center"><button class="btn btn-primary btn-sm" onclick="modifyinfo();">保存</button></td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+    </div>
+  </div>
+<script>
+var tab = '';
+function saveinfo()
+{
+  var type = 'updateuinfo';
+  var urealname = $('#urealname').val();
+  var usex = $('input:radio[name=usex]:checked').val();
+  tab = 'profile3';
+  <?php
+    $params = array('type','urealname','usex');
+    echo generate_ajax($params,'cb', '/action/useraction.php');
+  ?>
+}
+
+function cb(data)
+{
+  window.location.href = 'index.html?tab='+tab;
+}
+
+function modifycb(data)
+{
+  alert('密码修改成功');
+  window.location.href = 'index.html?tab='+tab;
+}
+
+function imgfresh()
+{
+  var t = new Date().getTime();
+  var url = '/html/user/img.php?a='+t;
+  $('#imgvcode').attr('src', url);
+}
+
+function modifyinfo()
+{
+  var uoldpwd = $('#uoldpwd').val();
+  var unewpwd = $('#unewpwd').val();
+  var unewpwd2 = $('#unewpwd2').val();
+  var vcode = $('#vcode').val();
+  var type = 'modifypwd';
+  tab = 'dropdown13';
+  if(!isPasswd(unewpwd))
+  {
+    alert('密码格式不对');
+  }
+  else
+  {
+    if(unewpwd==unewpwd2)
+    {
+      <?php
+      $params = array('type','uoldpwd','unewpwd', 'unewpwd2', 'vcode');
+      echo generate_ajax($params,'modifycb', '/action/useraction.php');
+      ?>
+    }
+    else
+    {
+      alert('两次密码不一样');
+    }
+  }
+}
+
+//校验密码：只能输入6-12个字母、数字、下划线
+function isPasswd(s)
+{
+  if((s.length>=6) && (s.length<=12))
+  {
+    var patrn=/^(?![a-zA-z]+$)(?!\d+$)(?![!@#$%^&*]+$)[a-zA-Z\d!@#$%^&*]+$/;
+    if (!patrn.exec(s)) return false
+    return true
+  }
+  else
+  {
+    return false;
+  }
+}
+  <?php if(!empty($tab)){ ?>
+    $('#<?php echo $tab;?>a').trigger('click');
+  <?php } ?>
+</script>
+</body>
+</html>

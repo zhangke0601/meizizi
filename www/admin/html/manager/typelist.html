@@ -1,0 +1,174 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsDictinfos.php');
+$title = '类型管理';
+$nav = 'type';
+require_once($base_dir.'www/admin/html/manager/head.html');
+
+
+$dict = new Dictinfos();
+
+$p = GetItemFromArray($_GET,'p');
+$s = GetItemFromArray($_GET,'s');
+$t = GetItemFromArray($_GET,'t');
+
+$p = intval($p);
+if($p < 1)
+  $p = 1;
+list($totalcount,$typeinfos) = $dict->GetTypeInfosByParams($p, $s);
+$pagecount = ceil($totalcount/COUNT_PER_PAGE);
+?>
+<style>
+  .px{
+    float: right;
+    margin-top: -24px;
+    margin-right: -7px;
+    color: red;
+  }
+</style>
+<div class="container" style="background-color:white">
+  <div class="row" style="height:50px;padding-top:10px">
+    <form>
+    <input value="<?php echo $s;?>" id="s" name="s" placeholder="输入类型查询" class="form-control" style="width:200px;float:left;margin-right:10px"/>
+    <button class="btn btn-default " onclick="search();">查询</button>
+    <a class="btn btn-primary btn-sm pull-right" href="javascript:void(0)" onclick="editdict('')">新增类型</a>
+    </form>
+  </div>
+  <div class="row">
+    <table class="table table-bordered">
+      <thead><td>ID</td><td>作品类型名称</td><td>显示状态</td><td>排序</td><td>添加时间</td><td>操作</td></thead>
+      <?php
+        foreach($typeinfos as $info)
+        {
+          echo sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
+            $info['cttpid'], $info['cttpname'],
+            $dictstates[$info['cttpstate']],
+            $info['cttpsort'],$info['cttpcreatetime'],
+            sprintf('<a href="javascript:void(0)" onclick="editdict(%d);">编辑</a><a style="margin-left:20px" href="javascript:void(0)" onclick="deletedict(%d);">删除</a>', $info['cttpid'], $info['cttpid']));
+        }
+      ?>
+    </table>
+    <div class="text-center">
+      <span class="text-center">
+        <?php echo get_view_for_page_index($p,$pagecount,'?p=%s');?>
+      </span>
+    </div>
+  </div>
+</div>
+    </div>
+  </div>
+<!--/*{{{ EditView */-->
+<div class="modal fade bs-example-modal-lg" id="editModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabel">类型编辑</h4>
+      </div>
+      <div class="modal-body" id="editdetail">
+        <form id="form">
+        <input id="cttpid" name="cttpid" type="hidden"/>
+        <input id="type" name="type" class="submittype" type="hidden"/>
+        <table class="table table-bordered">
+          <tr><td class="lefttd" style="vertical-align:middle">内容标签</td>
+            <td><input id="cttpname" name="cttpname" class="form-control" placeholder="内容标签"/><p class="px">*</p></td></tr>
+          <tr><td class="lefttd" style="vertical-align:middle">显示状态</td>
+            <td>
+              <label><input id="cttpstate0" type="radio" name="cttpstate" value="<?php echo STATE_NOR;?>"> 显示</label>&nbsp;&nbsp;&nbsp;&nbsp;
+              <label><input id="cttpstate<?php echo STATE_OFFLINE;?>" type="radio" name="cttpstate" value="<?php echo STATE_OFFLINE;?>"> 禁用</label>
+              <p style="float: right;color: red;">*</p>
+            </td></tr>
+          <tr><td class="lefttd" style="vertical-align:middle">排序</td><td>
+            <input id="cttpsort" name="cttpsort" class="form-control" placeholder="填写排序数字" />
+          </td></tr>
+          <tr><td class="lefttd" style="vertical-align:middle">说明</td><td>
+              <textarea  id="cttpdesc" name="cttpdesc" class="form-control" style="float:left;margin-right:20px" placeholder="填写说明"></textarea>
+          </td></tr>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+        <button id="submitbtn" type="button" class="btn btn-primary btn-sm" onclick="submiteditinfo();">确定</button>
+      </div>
+      </form>
+    </div>
+  </div>
+</div>
+<!--/*}}}*/-->
+<script>
+function emptymodalinfo()
+{
+  $('#cttpid').val('');
+  $('#cttpname').val('');
+  $("input:radio[name=cttpstate]").removeAttr('checked');
+  $('#cttpsort').val('');
+  $('#cttpdesc').val('');
+}
+function editdict(cttpid)
+{
+  emptymodalinfo();
+  if(cttpid > 0)
+  {
+    var type = 'gettypeinfobycttpid';
+    <?php
+      $params = array('type','cttpid');
+      echo generate_ajax($params,'gettypeinfobycttpidcb','/action/dictaction.php');
+    ?>
+  }
+  else
+  {
+    $('#editModal').modal('show');
+  }
+}
+
+function gettypeinfobycttpidcb(data)
+{
+  $('#editModal').modal('show');
+  $('#cttpid').val(data.result.cttpid);
+  $('#cttpname').val(data.result.cttpname);
+  $("input:radio[name=cttpstate]").removeAttr('checked');
+  $('#cttpstate'+data.result.cttpstate).attr('checked','checked');
+  $('#cttpsort').val(data.result.cttpsort);
+  $('#cttpdesc').val(data.result.cttpdesc);
+}
+
+function submiteditinfo()
+{
+  var cttpid = $('#cttpid').val();
+  var type = 'addtypeinfo';
+  if(cttpid > 0)
+    type = 'updatetypeinfo';
+  $('.submittype').val(type);
+  <?php
+    $params = '$("#form").serialize()';
+    echo generate_ajax($params, 'cb', '/action/dictaction.php');
+  ?>
+  return false;
+}
+
+function deletedict(id)
+{
+  if(confirm('确认删除？'))
+  {
+    var type = 'deletetypeinfo';
+    var cttpid = id;
+    <?php
+      $params = array('type','cttpid');
+    echo generate_ajax($params,'cb','/action/dictaction.php');
+    ?>
+  }
+}
+
+function cb(data)
+{
+  window.location.reload();
+}
+
+function search()
+{
+  var s = $('#s').val();
+  window.location.href="?s="+s;
+}
+</script>
+</body>
+</html>

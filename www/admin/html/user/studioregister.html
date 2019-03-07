@@ -1,0 +1,154 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'inc/init.php');
+require_once($base_dir.'inc/func.php');
+?>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+  <title>美滋滋工作室注册</title>
+</head>
+<body background="/assets/images/login_bg.jpg" style="background-repeat: no-repeat ;background-size: 100% 100%;background-attachment:fixed">
+  <div class="container">
+    <div class="center-block" style="margin-top:120px">
+      <div class="center-block" style="width:350px;background-color:white;box-shadow: 1px 1px 10px 1px rgba(0, 0, 0, 0.3);margin:0 auto">
+        <div style="padding:40px 30px 20px 30px;text-center">
+          <div class="text-center" style="margin-bottom:20px">
+            <img src="/assets/avatars/avatar1.png" style="width:60px;margin-bottom:5px"/><br>
+            <strong>美滋滋工作室注册</strong>
+          </div>
+          <input class="form-control" id="umobile" name="umobile" placeholder="手机号" style="margin-bottom:10px"/>
+          <div style="height:34px">
+            <input class="form-control" id="vcode" name="vcode" placeholder="验证码" style="margin-bottom:10px;width:60%;float:left"/>
+            <img src="/html/user/img.php?a=<?php echo time();?>" onclick="imgfresh();" id="imgvcode" style="margin-top:4px;margin-left:10px"/>
+          </div>
+          <div style="height:34px">
+            <input class="form-control" id="mvcode" name="mvcode" placeholder="手机验证码" style="margin-bottom:10px;width:60%;float:left"/>
+            <button id="getvcodebtn" style="margin-top:12px;margin-left:10px" class="btn btn-default btn-sm" onclick="sendvcode();">获取手机验证码</button>
+          </div>
+          <input class="form-control" id="urealname" name="urealname" placeholder="工作室名称"/>
+          <input class="form-control" type="password" id="upasswd" name="upasswd" placeholder="密码：至少6位，数字字母组合" style="margin-top:10px;margin-bottom:10px"/>
+          <div class="text-center">
+            <button class="btn btn-default btn-sm" style="width:100%;background-color: #0d7ac6;color: white;border-radius: 04px;height:35px" onclick="reg()">注册</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="text/javascript" src="/assets/js/jquery-easyui-1.4.3/jquery.min.js"></script>
+  <script>
+function imgfresh()
+{
+  var t = new Date().getTime();
+  var url = '/html/user/img.php?a='+t;
+  $('#imgvcode').attr('src', url);
+}
+
+function sendvcode()
+{
+  var umobile = $('#umobile').val();
+  if(!(/^1[34578]\d{9}$/.test(umobile))){ 
+    alert("手机号码有误，请重填");  
+    return false; 
+  } 
+  else
+  {
+    var type = 'sendvcode';
+    <?php
+      $params = array('type','umobile');
+      echo generate_ajax($params,'sendcb','/action/useraction.php');
+    ?>
+  }
+}
+
+var inter;
+var seconds = 60;
+var curseconds = 60;
+function sendcb(data)
+{
+  $('#getvcodebtn').attr('disabled',true);
+  curseconds = seconds;
+  $('#getvcodebtn').html(curseconds+'s后重新获取');
+  inter = setInterval(vcodebtnupdate,1000);
+  //alert('短信已发送，请查收');
+}
+
+function vcodebtnupdate()
+{
+  if(curseconds > 0)
+  {
+    --curseconds;
+    $('#getvcodebtn').html(curseconds+'s后重新获取');
+  }
+  else
+  {
+    $('#getvcodebtn').html('获取手机验证码');
+    $('#getvcodebtn').removeAttr('disabled');
+    window.clearInterval(inter);
+  }
+}
+
+/*function sendcb(data)
+{
+  alert('短信已发送，请查收');
+}*/
+
+function reg()
+{
+  var umobile = $('#umobile').val();
+  var vcode = $('#vcode').val();
+  var mvcode = $('#mvcode').val();
+  var urealname = $('#urealname').val();
+  var upasswd = $('#upasswd').val();
+  var utype = <?php echo USERTYPE_STUDIO;?>;
+  var type = 'userreg';
+  if(checkitemnull(vcode,'验证码') && checkitemnull(mvcode,'手机验证码') && checkitemnull(urealname,'真实姓名') && checkitemnull(upasswd,'密码')){
+
+    if(isPasswd(upasswd))
+    {
+  <?php
+    $params = array('type','umobile','vcode','mvcode','urealname','upasswd','utype');
+    echo generate_ajax($params,'regcb', '/action/useraction.php');
+  ?>
+    }
+    else
+    {
+      alert('密码至少6位，并且数字字母组合');
+    }
+  }
+}
+
+function regcb(data)
+{
+  window.location.href='/index.html';
+}
+
+//校验密码：只能输入至少6个字母、数字、下划线
+function isPasswd(s)
+{
+  if(s.length >= 6)
+  {
+    var patrn=/^(?![a-zA-z]+$)(?!\d+$)(?![!@#$%^&*]+$)[a-zA-Z\d!@#$%^&*]+$/;
+    if (!patrn.exec(s)) return false
+    return true
+  }
+  else
+  {
+    return false;
+  }
+}
+
+function checkitemnull(str, viewstr)
+{
+  if((str!=null) && (str.length>0))
+    return true;
+  else
+  {
+    alert(viewstr+"为空");
+      return false;
+  }
+}
+  </script>
+
+</body>
+</html>

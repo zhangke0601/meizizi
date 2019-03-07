@@ -1,0 +1,271 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+$nav = 'platform';
+$title = '发布平台账号管理';
+require_once($base_dir.'www/admin/html/studio/head.html');
+require_once($base_dir.'model/clsPlatforminfos.php');
+$platform = new Platforminfos();
+$p = GetItemFromArray($_GET,'p');
+$search = GetItemFromArray($_GET,'search');
+$where = sprintf(' pfstate=%d',STATE_NOR);
+if(strlen($search))
+  $where .= sprintf(' and pfname like "%%%s%%"',mysql_real_escape_string($search,$platform->db->link));
+if(intval($p) <1)
+    $p = 1;
+$limitl = ($p-1)*COUNT_PER_PAGE;
+$limitr = COUNT_PER_PAGE;
+list($count,$platforminfos) = $platform->getinfos($where,'','pfsort','',$limitl,$limitr);
+$uid = $uinfo['uid'];
+$pagecount = ceil($count/COUNT_PER_PAGE);
+
+
+
+?>
+<style>
+  .px{
+    /*float: right;
+    margin-top: -24px;
+    margin-right: -7px;*/
+    color: red;
+  }
+  .table thead>tr>th, .table tbody>tr>th, .table tfoot>tr>th, .table thead>tr>td, .table tbody>tr>td, .table tfoot>tr>td{
+    border-top:0px
+  }
+</style>
+
+<div class="container" style="height:64px;font-size:17px;margin-top:20px;margin-bottom:10px;min-height:64px">
+ <div class="row" style="line-height:64px;margin:0px 0px 0px 10px;color:#323232">
+    发布平台账号
+ </div>
+</div>
+
+<div class="container">
+  <div class="row" style="margin-left:10px;margin-top:20px">
+    <form>
+      <input id="search" name="search" placeholder="输入平台名称查询" class="form-control" style="width:400px;float:left;margin-right:10px" value="<?php echo $search;?>"/>
+      <input class="btn btn-primary btn-sm" type="submit" value="查询" style="width:90px">
+    </form>
+  </div>
+  <div class="row" style="margin-left:10px;margin-top:10px">
+    <table class="table table-bordered">
+      <thead><td>操作</td><td>平台名称</td><td>账户信息</td><td>账户类型</td></thead>
+      <?php
+        foreach($platforminfos as $platforminfo)
+        {
+           $upfinfo = $platform->existUserAndPlatform($uid,$platforminfo['pfid']);
+            $btn = sprintf('<a onclick="addupfinfo(%d)" style="cursor:pointer">添加账户</a>',$platforminfo['pfid']);
+            $uinfo = '暂无';
+            $upftype = '暂无';
+            if($upfinfo)
+            {
+            $btn = sprintf('<a onclick="getupfinfo(%d)" style="cursor:pointer">编辑</a>',$upfinfo['upfid']);
+            if($upfinfo['upftype'] == USERANDPLATFORM_TYPE_MEI)
+            $uinfo = '美滋滋联盟账户';
+            elseif($upfinfo['upftype'] == USERANDPLATFORM_TYPE_OWN)
+            $uinfo = sprintf('%s',$upfinfo['upfusername']);
+            $upftype = $upftypes[$upfinfo['upftype']];
+            }
+            echo sprintf('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
+            $btn,$platforminfo['pfname'],$uinfo,$upftype);
+            }
+      ?>
+    </table>
+    <div class="text-center"><span class="text-center"><?php echo get_view_for_page_index($p, $pagecount, '?'.build_query(array('p'=>'%s')));?></span></div>
+
+  </div>
+</div>
+<!-- 展示平台账户信息 -->
+<div class="modal fade bs-example-modal" id="upfinfo" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog" role="document" style="width: 580px;" >
+    <div class="modal-content" >
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="dispatchModalLabel">平台账户信息</h4>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="upfid" value="0"   />
+        <input type="hidden" id="pfid"  value="0" />
+        <table class="table">
+          <tr>
+            <td>账户类型</td>
+            <td colspan=2>
+              <label id="own_user"><input value="<?php echo USERANDPLATFORM_TYPE_OWN?>" onclick="getupftype()"  type="radio" id="upftype<?php echo USERANDPLATFORM_TYPE_OWN;?>" name="upftype" checked />使用已有账户</label>
+              &nbsp;&nbsp;&nbsp;&nbsp;
+              <label><input value="<?php echo USERANDPLATFORM_TYPE_MEI?>" onclick="getupftype()" type="radio" id="upftype<?php echo USERANDPLATFORM_TYPE_MEI;?>" name="upftype" />使用美滋滋账户</label>
+            </td>
+          </tr>
+          <tr id="usernameinfo" style="" ><td>账户名称</td><td><input type="text" id="upfusername" /><span class="px">*</span></td><td style="text-align:center" rowspan="2"><a id="testbtn" class="btn btn-primary btn-sm" onclick="testforaccount();" style="margin-right:20px">测试账号</a><a class="btn btn-primary btn-sm" onclick="sync();">同步漫画</a></td></tr>
+          <tr id="userpasswordinfo" style="" ><td>密码</td><td><input type="" id="upfpassword" /><span class="px">*</span></td></tr>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+        <button id="submitbtn" type="button" class="btn btn-primary" onclick="submotupfinfo();">确定</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+<script>
+  function addupfinfo(pfid)
+  {
+    emptyupfinfo();
+    $('#pfid').val(pfid);
+    $('#upfinfo').modal('show');
+
+    if(pfid == 11){
+        $('#own_user').hide();
+        $('#usernameinfo').hide();
+        $('#userpasswordinfo').hide();
+    }
+  }
+  function getupfinfo(upfid)
+  {
+    var type = 'getupfinfo';
+    <?php
+  $params = array('type','upfid');
+    echo generate_ajax($params,'showupfinfo','/action/platformaction.php');
+    ?>
+  }
+  function showupfinfo(data)
+  {
+    emptyupfinfo();
+    var upfinfo = data.upfinfo;
+    $('#upfid').val(upfinfo.upfid);
+    $('#pfid').val(upfinfo.pfid);
+    //$("input[name='upftype'][value="+upfinfo.upftype+"]").attr('checked','true');
+    //$('#upftype'+upfinfo.upftype).attr('checked','checked');
+    document.getElementById('upftype'+upfinfo.upftype).checked = true;
+    $('#pfid').val(upfinfo.pfid);
+    $('#upfusername').val(upfinfo.upfusername);
+    $('#upfpassword').val(upfinfo.upfpassword);
+    getupftype();
+    if((upfinfo.pfid==<?php echo SOURCE_TENCENT?>) || (upfinfo.pfid==<?php echo SOURCE_AIQIYI;?>) )
+    {
+      $('#testbtn').hide();
+    }
+    else
+    {
+      $('#testbtn').show();
+    }
+    $('#upfinfo').modal('show');
+      if(upfinfo.pfid == 11){
+          $('#own_user').hide();
+      }
+
+  }
+  /* 选择账户类型 */
+  function getupftype()
+  {
+    var upftype = $('input[name="upftype"]:checked').val();
+    if(upftype == <?php echo USERANDPLATFORM_TYPE_MEI?>)
+  {
+    $('#usernameinfo').hide();
+    $('#userpasswordinfo').hide();
+    $('#upfusername').val('');
+    $('#upfpassword').val('');
+  }else if(upftype == <?php echo USERANDPLATFORM_TYPE_OWN?>)
+  {
+    $('#usernameinfo').show();
+    $('#userpasswordinfo').show();
+  }
+  }
+  /* 提交平台账户信息 */
+  function submotupfinfo()
+  {
+    var type = 'addupfinfo';
+    var upftype = $('input[name="upftype"]:checked').val();
+    var upfusername = $('#upfusername').val();
+    var upfpassword = $('#upfpassword').val();
+    var pfid = $('#pfid').val();
+    var upfid = $('#upfid').val();
+    if(upfid > 0)
+      type = 'updateupfinfo';
+    if(upftype == undefined)
+    {
+      alert('请选择账户类型');
+      return ;
+    }
+    var ret = true;
+    if(upftype == <?php echo USERANDPLATFORM_TYPE_OWN?>)
+  {
+    if(upfusername == '' || upfpassword == '')
+    ret = false;
+  }
+  if(ret)
+  {
+    <?php
+    $params = array('type','pfid','upfid','upftype','upfusername','upfpassword');
+    echo generate_ajax($params,'tishi','/action/platformaction.php');
+    ?>
+  }
+  else
+  alert('请填写资料');
+  }
+  function tishi(data)
+  {
+    alert('操作成功');
+    window.location.reload();
+  }
+  function emptyupfinfo()
+  {
+    $('#upif').val(0);
+    $('#pfid').val(0);
+    $('input[name="upftype"]').attr('checked',false);
+    //$('#upftype2').attr('checked',true);
+    document.getElementById('upftype2').checked = true;
+    var keys = new Array('upfusername','upfpassword');
+    for(var idx in keys)
+      $('#'+keys[idx]).val('');
+  }
+  /*  */
+  function checkitemnull(str, viewstr)
+  {
+    if((str!=null) && (str.length>0))
+      return true;
+    else
+    {
+      alert(viewstr+"为空");
+      return false;
+    }
+  }
+</script>
+<script>
+function testforaccount()
+{
+  var pfid = $('#pfid').val();
+  var pfusername = $('#upfusername').val();
+  var pfpassword = $('#upfpassword').val();
+
+  var type = 'testforaccount';
+  <?php
+    $params = array('type','pfid','pfusername','pfpassword');
+  echo generate_ajax($params,'cb','/action/platformaction.php');
+  ?>
+}
+
+function sync()
+{
+  var pfid = $('#pfid').val();
+  var pfusername = $('#upfusername').val();
+  var pfpassword = $('#upfpassword').val();
+  var type = 'synccomic';
+  <?php
+    $params = array('type','pfid','pfusername','pfpassword');
+    echo generate_ajax($params,'cb','/action/platformaction.php');
+  ?>
+}
+
+function cb(data)
+{
+  if(data.msg)
+    alert(data.msg);
+  else
+    alert('同步成功');
+}
+
+</script>
+
+
+</body>
+</html>

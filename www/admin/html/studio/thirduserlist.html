@@ -1,0 +1,1140 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+require_once($base_dir.'model/clsCartoonSectioninfos.php');
+require_once($base_dir.'model/clsThirduserinfos.php');
+require_once($base_dir.'model/clsFunc.php');
+$title = '第三方用户';
+$nav = 'thirduserlist';
+require_once($base_dir.'www/admin/html/studio/head.html');
+
+$p = GetItemFromArray($_GET,'p');
+$s = GetItemFromArray($_GET,'s');
+$tu = new Thirduserinfos();
+$func = new Func();
+list($totalcount,$tuinfos) = $tu->GetListByParam($p,$s);
+foreach($tuinfos as $idx=>$tuinfo){
+  $tuuinfo = $tu->GetTucAndUinfo($tuinfo['tuid'], $uid);
+  if($tuuinfo){
+    $tuinfos[$idx]['tuustatename'] = $tuauthstates[$tuuinfo['tuustate']];
+    $tuinfos[$idx]['tuustate'] = $tuuinfo['tuustate'];
+    $tuinfos[$idx]['tuuauthenddate'] = $tuuinfo['tuuauthenddate'];
+  }else{
+    $tuinfos[$idx]['tuustatename'] = '未授权';
+    $tuinfos[$idx]['tuustate'] = 0;
+    $tuinfos[$idx]['tuuauthenddate'] = '';
+  }
+}
+$pagecount = ceil($totalcount/COUNT_PER_PAGE);
+?>
+
+<div class="container" style="background-color:white">
+  <div class="row" style="height:35px;display:none"> <!--style="display:none"-->
+    <form>
+      <input id="s" name="s" placeholder="输入公告标题查询" class="form-control" style="width:200px;float:left;margin-right:10px" value="<?php echo $s;?>"/>
+      <input type="submit" class="btn btn-default " value="查询">
+    </form>
+  </div>
+
+  <div class="row">
+    <table class="table table-bordered">
+      <thead><td>ID</td><td>渠道名</td><td>描述</td><td>授权状态</td><td>操作</td><td>创建时间</td></thead>
+    <?php
+      foreach($tuinfos as $info)
+      {
+        echo sprintf('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
+          $info['tuid'],$info['tuname'],
+          $info['tudesc'], $info['tuustatename'],
+          sprintf('<a href="javascript:void(0)" style="cursor:pointer" onclick="editauthstate(%d,%d,\'%s\');">设置授权状态</a>&nbsp;&nbsp;  
+            <a href="javascript:void(0)" style="cursor:pointer" onclick="editauth(%d);">授权作品</a>&nbsp;&nbsp;
+            <a href="javascript:void(0)" style="cursor:pointer" onclick="editstafee(%d);">编辑各作品计费点</a>&nbsp;&nbsp;
+            <a href="javascript:void(0)" style="cursor:pointer;display:none" onclick="editthirduser(%d);">编辑</a>
+            <a href="javascript:void(0)" style="cursor:pointer;margin:0px 10px;display:none" onclick="deletethirduser(%d);">删除</a>', $info['tuid'], $info['tuustate'], $info['tuuauthenddate'], $info['tuid'],$info['tuid'], $info['tuid'], $info['tuid']),
+          $info['tucreatetime']);
+      }
+    ?>
+    </table>
+    <div class="text-center">
+      <span class="text-center">
+        <?php echo get_view_for_page_index($p,$pagecount,'?p=%s');?>
+      </span>
+    </div>
+  </div>
+</div>
+    </div>
+  </div>
+  
+<div class="modal fade " id="authstateModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe2">授权状态编辑</h4>
+      </div>
+      <div class="modal-body" id="editdetai">
+        <input type='hidden' id="tuid" value="" />
+        <table class="table">
+          <tr style=""><td style="width:100px">授权状态</td><td><select id="tuustate"><?php echo OutputSelectOption($tuauthstates,'0');?></select></td></tr>
+          <tr style=""><td style="width:100px">授权截止时间</td><td><input id="tuuauthenddate" class="form-control" value=""  onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" data-date-format="yyyy-mm-dd"  /></td></tr>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" >取消</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="saveauthstate();">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade " id="authModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe2">作品授权</h4>
+      </div>
+      <div class="modal-body" id="editdetai">
+        <input type='hidden' id="autuid" value="" />
+        <div class="row">
+          <div class="col-sm-5" style="">
+            <div><input id="key" name="key" onchange="searchkey()" class="form-control" placeholder="请输入关键词检索"></div>
+            <div style="overflow-y:auto;height:300px;background-color:#ddd;padding:5px" id="allct"></div>
+          </div>
+          <div class="col-sm-2" style="height:300px;text-align:center;padding:0px">
+            <a class="btn btn-primary btn-sm" style="margin-top:100px" onclick="toright();">自动添加&gt;</a>
+            <a class="btn btn-primary btn-sm" style="margin-top:20px" onclick="torighthand();">手工添加&gt;</a>
+            <a class="btn btn-primary btn-sm" style="margin-top:20px" onclick="deletetucid();">&lt;删除</a>
+          </div>
+          <div class="col-sm-5" style="">
+            <div style="text-align:center"><a class="btn btn-primary btn-sm" onclick="editsection();">编辑章节</a></div>
+            <div style="overflow-y:auto;height:300px;background-color:#ddd;padding:5px" id="selectedct"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" >取消</button>
+        <button type="button" class="btn btn-primary btn-sm" data-dismiss="modal" >保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal fade " id="stafeeModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe4">编辑各作品计费点</h4>
+      </div>
+      <div class="modal-body" id="editstafee">
+        <input type='hidden' id="stafeetuid" value="" />
+        <table class="table">
+          <tr style=""><td style="width:300px">授权作品</td><td><select id="tuctid" onchange="showsection(this)"></select></td></tr>
+
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" >取消</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal fade " id="sectionfeeModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe5">计费点章节设置</h4>
+      </div>
+      <div class="modal-body" id="editdetai">
+        <input type='hidden' id="stafeectid" value="" />
+        <div class="row">
+          <div class="col-sm-3">
+            开始计费的章节：
+          </div>
+          <div class="col-sm-5" id="sectionfeelist">
+
+          </div>
+
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" >取消</button>
+        <button type="button" class="btn btn-primary btn-sm"  onclick="torighthand5();" >保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<div class="modal fade " id="sectionselectModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe2">作品章节选择</h4>
+      </div>
+      <div class="modal-body" id="editdetai">
+        <input type='hidden' id="autuid" value="" />
+        <div class="row" id="sectlist">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" >取消</button>
+        <button type="button" class="btn btn-primary btn-sm"  onclick="torighthand2();" >保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--自动发布模态框-->
+<div class="modal fade " id="autoReleaseModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe3">发布设置</h4>
+      </div>
+      <div class="modal-body" id="release_body">
+        <div class="row" id="release-method">
+          <div class="radio">
+            <label>
+              <input type="radio" name="release_method" id="methodRadios1" onclick="setReleaseMethod(1)" value="1" checked>
+              自动发布
+            </label>
+          </div>
+          <div class="radio">
+            <label>
+              <input type="radio" name="release_method" id="methodRadios2" onclick="setReleaseMethod(2)" value="2">
+              定时发布
+            </label>
+          </div>
+        </div>
+
+        <!--自动发布设置-->
+        <div class="row" id="auto-release-set" style="display: none">
+          <form class="form-inline">
+            <!--星期选择-->
+            <div class="row" id="weeks-select">
+              星期选择：
+              <div class="checkbox">
+                <label>
+                  <input name="weeks" type="checkbox" value="1">
+                  周一
+                </label>
+              </div>
+              <div class="checkbox">
+                <label>
+                  <input name="weeks" type="checkbox" value="2">
+                  周二
+                </label>
+              </div>
+              <div class="checkbox">
+                <label>
+                  <input name="weeks" type="checkbox" value="3">
+                  周三
+                </label>
+              </div>
+              <div class="checkbox">
+                <label>
+                  <input name="weeks" type="checkbox" value="4">
+                  周四
+                </label>
+              </div>
+              <div class="checkbox">
+                <label>
+                  <input name="weeks" type="checkbox" value="5">
+                  周五
+                </label>
+              </div>
+              <div class="checkbox">
+                <label>
+                  <input name="weeks" type="checkbox" value="6">
+                  周六
+                </label>
+              </div>
+              <div class="checkbox">
+                <label>
+                  <input name="weeks" type="checkbox" value="7">
+                  周日
+                </label>
+              </div>
+          </form>
+          </div>
+          <!-- 自动发布频率设置 -->
+          <div class="row" id="auto-release-freq">
+            <div class="form-group">
+              <label for="release-freq">当天发布话数：</label>
+              <input type="text" class="form-control" id="release-freq" value="1" placeholder="输入数字">
+            </div>
+          </div>
+          <!--截止章节-->
+          <div class="row">
+            截止章节：
+            <select class="form-control" id="end-section-list">
+            </select>
+          </div>
+        </div>
+
+        <!--定时发布设置-->
+        <div class="row" id="fixtime-release-set" style="display: none">
+          <!--章节选择-->
+          <div class="row">
+            章节选择：
+            <select class="form-control" id="section-list">
+
+            </select>
+          </div>
+          <div class="row">
+            <button onclick="showReleaseTime()" >设置时间</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" >关闭</button>
+        <button id="btn-auto-release-save" type="button" class="btn btn-primary btn-sm"  onclick="saveAutoReleaseSet();" >保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--章节定时发布时间设置模态框-->
+<div class="modal fade " id="fixtimeSetModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe6">请设置时间</h4>
+      </div>
+      <div class="modal-body" id="set-time-detail">
+        <input class="form-control" id="set-time" value="" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd HH:mm:ss' })" data-date-format="yyyy-mm-dd" placeholder="请设置定时同步到渠道的时间" >
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" >取消</button>
+        <button type="button" class="btn btn-primary btn-sm"  onclick="saveFixtime();" >保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade " id="sectioneditModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe2">作品章节选择</h4>
+      </div>
+      <div class="modal-body" id="editdetai">
+        <input type='hidden' id="autuid" value="" />
+        <div class="row" id="secteditlist">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" onclick="releaseMethodSet()">定时或自动发布设置</button>
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" >取消</button>
+        <button type="button" class="btn btn-primary btn-sm"  onclick="torighthand3();" >保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade " id="qudaodescModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true"></span></button>
+        <h4 class="modal-title" id="myModalLabe2">渠道说明</h4>
+      </div>
+      <div class="modal-body" id="editdetai">
+        <div class="row" id="qudaodesc">
+          <?php echo $func->GetQudaodesc();?>
+        </div>
+      </div>
+      <div class="modal-footer" style="text-align:center">
+        <button type="button" class="btn btn-primary btn-sm" onclick="setqudaodescview();" >知道了</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function emptyinfo()
+{
+  $('#tuid').val('');
+  $('#tuaccesstoken').val('');
+}
+
+function editthirduser(tuid)
+{
+  emptyinfo();
+  if(tuid == 0){
+    $('#thirduserModal').modal('show');
+  }else{
+    var type = 'getthirduserinfobytuid';
+    <?php
+    $params = array('type','tuid');
+    echo generate_ajax($params,'getthirdusercb','/action/funcaction.php');
+    ?>
+  }
+}
+
+function getthirdusercb(data){
+  $('#tuid').val(data.result.tuid);
+  $('#tuname').val(data.result.tuname);
+  $('#tuaccesstoken').val(data.result.tuaccesstoken);
+  $('#thirduserModal').modal('show');
+}
+
+function savethirduser(){
+  var tuid = $('#tuid').val();
+  var tuname = $('#tuname').val();
+  var tuaccesstoken = $('#tuaccesstoken').val();
+  var type = 'addthirduser';
+  if(tuid.length > 0)
+    type = 'updatethirduser';
+  if((tuname.length>0)&&(tuaccesstoken.length)){
+    <?php
+    $params = array('type','tuid','tuname','tuaccesstoken');
+    echo generate_ajax($params,'cb','/action/funcaction.php');
+    ?>
+  }else{
+    alert('请填写完整');
+  }
+}
+
+function gettoken(){
+  var type = 'getaccesstoken';
+  var name = $('#tuname').val();
+  <?php
+    $params = array('type','name');
+    echo generate_ajax($params,'gettokencb','/action/funcaction.php');
+  ?>
+}
+
+function gettokencb(data){
+  $('#tuaccesstoken').val(data.result);
+}
+
+function deletethirduser(tuid)
+{
+  if(confirm('确认删除')){
+    var type = 'deletethirduser';
+    <?php
+    $params = array('type','tuid');
+    echo generate_ajax($params,'cb','/action/funcaction.php');
+    ?>
+  }
+}
+function cb(data)
+{
+  window.location.reload();
+}
+
+
+function editstafee(tuid) {
+    $('#stafeeModal').modal('show');
+    $('#stafeetuid').val(tuid);
+
+    var type = 'getcartooninfosforthirduser';
+    <?php
+        $params = array('type','tuid');
+    echo generate_ajax($params,'getthirdcartoons','/action/funcaction.php');
+    ?>
+}
+
+function getthirdcartoons(data){
+    // console.log(data);
+    $('#tuctid').html('');
+    var selectHtml = '<option value="">请选择授权作品</option>';
+    for (var i in data.result) {
+        selectHtml += '<option value="'+data.result[i].tucid+'" >'+data.result[i].ctinfo.ctname+'</option>';
+    }
+    $('#tuctid').html(selectHtml);
+}
+
+function showsection(obj)
+{
+    var type = 'gettucinfobytucid';
+    var tucid = $(obj).val();
+    // <?php
+    // $params = array('type','tucid');
+    // echo generate_ajax($params,'feesection','/action/funcaction.php');
+    // ?>
+
+    <?php
+    $params = array('type','tucid');
+    echo generate_ajax($params,'feesection','/action/thirdfeeaction.php');
+    ?>
+}
+
+function feesection(data){
+    // console.log(data);
+    $('#sectionfeelist').html('');
+    var sectionfeelist  = '';
+    sectionfeelist += '<select id="sectionfeeid">';
+
+    for (var i in data.result.ctsinfos) {
+        if(data.result.ctsinfos[i].ctsid == data.result.tucinfo.ctsid) {
+            sectionfeelist += '<option value="'+data.result.ctsinfos[i].ctsid+'" selected>'+data.result.ctsinfos[i].ctsname+'</option>';
+        } else {
+            sectionfeelist += '<option value="'+data.result.ctsinfos[i].ctsid+'">'+data.result.ctsinfos[i].ctsname+'</option>';
+        }
+
+    }
+
+    sectionfeelist += '</select>';
+    $('#sectionfeelist').html(sectionfeelist);
+    $('#stafeectid').val(data.result.tucinfo.ctid);
+    $('#sectionfeeModal').modal('show');
+}
+
+function torighthand5(){
+    var ctsid = $('#sectionfeeid').val();
+    var tuid = $('#stafeetuid').val();
+    var ctid = $('#stafeectid').val();
+    var type = 'thirduserfeesection';
+    <?php
+        $params = array('tuid','ctid', 'ctsid','type');
+    echo generate_ajax($params,'feesuccess','/action/thirdfeeaction.php');
+    ?>
+}
+
+function feesuccess(data){
+    if(data.retno == 0){
+        alert('修改成功');
+        $('#sectionfeeModal').modal('hide');
+    }
+}
+
+function editauth(tuid){
+  $('#autuid').val(tuid);
+
+  var type = 'getcartooninfosforthirduser';
+  <?php
+  $params = array('type','tuid');
+  echo generate_ajax($params,'getctinfosbythidcb','/action/funcaction.php');
+  ?>
+}
+
+function getctinfosbythidcb(data){
+  $('#key').val('');
+  console.log(data)
+  $('#allct').html('');
+  $('#selectedct').html('');
+  for(var i in data.result){
+    if(data.result[i].autoinfo.release_weeks != undefined && data.result[i].autoinfo.release_weeks != ''){
+        var title = '每周'+data.result[i].autoinfo.release_weeks+'自动同步'+data.result[i].autoinfo.count_per_day+'个章节';
+    }else{
+        var title = "";
+    }
+      var ht = '<div class="rightselected" data-type="'+data.result[i].tuctype+'" id="seltucid_'+data.result[i].tucid+'" onclick="selectright('+data.result[i].tucid+')" title='+title+'>';
+    if(data.result[i].tuctype == 0)
+      ht += '自动&nbsp;';
+    else if(data.result[i].tuctype == 5)
+      ht += '手工&nbsp;';
+    ht += data.result[i].ctinfo.ctname;
+    ht += '</div>';
+    $('#selectedct').append(ht);
+  }
+  $('#authModal').modal('show');
+  searchkey();
+}
+
+var rightselected = 0;
+//自动发布相关变量
+var release_method = 0;
+var auth_id = 0;
+var section_id = 0;
+var set_time = "";
+var release_weeks = new Array();
+var count_per_day = 1;
+var end_section_id = 0;
+/* 点击作品授权右侧窗口的处理 */
+function selectright(tucid){
+  $('.rightselected').css('background-color',"unset");
+  $('#seltucid_'+tucid).css('background-color','green');
+  rightselected = tucid;// 授权作品记录表主键
+}
+
+function releaseMethodSet(){
+    // 增加弹窗处理
+    $('#autoReleaseModal').modal('show');
+//  setReleaseMethod($('#release-method input:radio:checked').val());
+    setReleaseMethod();
+}
+
+// 发布方式设置选项展示
+var autoReleaseData = [];
+var fixtimeReleaseInfo;
+function setReleaseMethod(method)
+{
+    release_method = method;
+    // 根据rightselected获取发布方式
+
+    if(isEmpty(release_method)){
+        // 非手动点击选择发布方式
+        console.log("非手动点击选择发布方式:"+release_method);
+        //    $.post("http://local.test.com/comic/public/api/Channel/getReleaseInfo",{
+        $.post("http://stats.ftread.com/api/Channel/getReleaseInfo",{
+                auth_id:rightselected
+            },
+            function(data,status){
+                console.log(data);
+                $('#weeks-select input:checkbox').each(function () {
+                    $(this).prop('checked',false);
+                });
+                $('#release-freq').val(1);
+                if(data.data.release_method == 1){
+                    autoReleaseData = data.data.release_info;
+                    console.log(autoReleaseData);
+
+                    // 同时设置过定时发布的
+                    if(autoReleaseData.length > 1) {
+                        fixtimeReleaseInfo = autoReleaseData;
+                    }
+                    $('#end-section-list').empty();
+                    release_method = 1;
+                    $('#release-freq').val(autoReleaseData[0].count_per_day);
+
+                    // 星期显示
+                    var strleng = autoReleaseData[0].release_weeks.length;
+                    console.log('strleng:'+strleng);
+                    if(strleng > 2){
+                        var weekArray = autoReleaseData[0].release_weeks.substring(1, strleng - 1).split(',');
+                        console.log(weekArray);
+                        // console.log('weekArray.length' + weekArray.length);
+                        for (var obj in weekArray) {
+                            if(weekArray[obj] !== '') {
+                                var eqIdx = weekArray[obj]-1;
+                                $('#weeks-select input:checkbox:eq('+ eqIdx +')').prop("checked",true);
+                            }
+                        }
+                    }
+                    // 自动发布方式 显示星期
+                    showEndSection();
+                }else{
+                    // 所有任务都为定时发布的情况
+                    release_method = 2;
+                    fixtimeReleaseInfo = data.data.release_info;
+                    showSection();
+                }
+            });
+    }else{
+        // 手动点击选择发布方式
+        console.log("发布方式:"+release_method);
+        if(release_method == 1) {
+            // 自动发布方式 显示星期
+            showEndSection();
+        }else if(release_method == 2) {
+            showSection();
+        }
+    }
+}
+
+/*显示截止章节*/
+function showEndSection(){
+    $('#end-section-list').empty();
+    console.log("隐藏定时发布设置选项");
+    $('#methodRadios1').prop('checked',true);
+    $('#methodRadios2').prop('checked',false);
+    $('#fixtime-release-set').hide();
+    $('#btn-auto-release-save').show();
+    console.log("显示自动发布设置选项");
+    $('#auto-release-set').show();
+
+    // 请求章节
+    var auth_id = rightselected;
+    $('#end-section-list').append('<option value="0">可选择截止章节</option>');
+//    $.post("http://local.test.com/comic/public/api/Channel/getSections",{
+    $.post("http://stats.ftread.com/api/Channel/getSections",{
+            auth_id:auth_id
+        },
+        function(data,status){
+            console.log(data);
+            for(var i in data.data){
+//                console.log(autoReleaseData[0].end_section_id);
+//                console.log(data.data[i].section_id);
+//                console.log(data.data[i].section_name);
+                if(!isEmpty(autoReleaseData[0]) && autoReleaseData[0].end_section_id == data.data[i].section_id)
+                  $('#end-section-list').append('<option value="'+ data.data[i].section_id +'" selected>' + data.data[i].section_name+'</option>');
+                else
+                  $('#end-section-list').append('<option value="'+ data.data[i].section_id +'">' + data.data[i].section_name+'</option>');
+            }
+        });
+}
+
+/*显示漫画所有章节*/
+function showSection(){
+    $('#section-list').empty();
+    console.log("隐藏自动发布设置选项");
+    $('#methodRadios1').prop('checked',false);
+    $('#methodRadios2').prop('checked',true);
+    $('#auto-release-set').hide();
+    $('#btn-auto-release-save').hide();
+    console.log("显示定时发布设置选项");
+    $('#fixtime-release-set').show();
+
+    // 请求章节
+    var auth_id = rightselected;
+    $('#section-list').append('<option value="0"></option>');
+//    $.post("http://local.test.com/comic/public/api/Channel/getSections",{
+    $.post("http://stats.ftread.com/api/Channel/getSections",{
+            auth_id:auth_id
+        },
+        function(data,status){
+            console.log(data);
+            for(var i in data.data){
+//                console.log(data.data[i].section_id);
+//                console.log(data.data[i].section_name);
+
+                if(!isEmpty(fixtimeReleaseInfo)){
+                    var is_find = 0;
+                    console.log('!isEmpty(fixtimeReleaseInfo)');
+                    for(var obj in fixtimeReleaseInfo){
+                        if(fixtimeReleaseInfo[obj].section_id == data.data[i].section_id){
+                            $('#section-list').append('<option value="'+ data.data[i].section_id +'" selected>' + data.data[i].section_name + '【已定时】' +fixtimeReleaseInfo[obj].set_time +'</option>');
+                            is_find = 1;
+                            break;
+                        } else{
+                            is_find = 0;
+                            continue;
+                        }
+                    }
+
+                    if(is_find == 0){
+                        $('#section-list').append('<option value="'+ data.data[i].section_id +'">' + data.data[i].section_name+'</option>');
+                    }
+                }else{
+                    $('#section-list').append('<option value="'+ data.data[i].section_id +'">' + data.data[i].section_name+'</option>');
+                }
+            }
+
+            fixtimeReleaseInfo = undefined;
+        });
+}
+
+/* 保存发布设置 */
+function saveAutoReleaseSet(){
+    // 发布星期
+    release_weeks = new Array();
+    count_per_day = $("#release-freq").val();
+    console.log(count_per_day);
+
+    $('#weeks-select input:checkbox:checked').each(function () {
+        release_weeks.push($(this).val().toString());
+    });
+    //    console.log(release_weeks);
+    //    return;
+//    $.post("http://local.test.com/comic/public/api/Channel/addReleaseTask",{
+    $.post("http://stats.ftread.com/api/Channel/addReleaseTask",{
+            release_method:release_method,
+            auth_id:rightselected,
+            release_weeks:'[' + release_weeks.join() + ']',
+            count_per_day:count_per_day,
+            end_section_id:$('#end-section-list').val()
+        },
+        function(data,status){
+            console.log(status);
+            console.log(data);
+            alert(data.msg);
+        });
+}
+
+/* 定时发布章节显示时间设置 */
+function showReleaseTime(){
+    $('#fixtimeSetModal').modal('show');
+}
+
+/* 保存设置的定时发布时间 */
+function saveFixtime(){
+    // 章节
+    auth_id = rightselected;
+    var section_id = $('#section-list').val();
+    var set_time = $('#set-time').val();
+    console.log(release_method);
+    console.log(auth_id);
+    console.log(section_id);
+    console.log(set_time);
+
+//    $.post("http://local.test.com/comic/public/api/Channel/addReleaseTask",{
+    $.post("http://stats.ftread.com/api/Channel/addReleaseTask",{
+            release_method:release_method,
+            auth_id:auth_id,
+            section_id:section_id,
+            set_time:set_time
+        },
+        function(data,status){
+            console.log(status);
+            console.log(data);
+            alert(data.msg);
+        });
+}
+
+function searchkey(){
+  var key = $('#key').val();
+  var type = 'getcartooninfosbykey';
+  var tuid = $('#autuid').val();
+  <?php
+  $params = array('type','key', 'tuid');
+  echo generate_ajax($params,'searchkeycb','/action/cartoonaction.php');
+  ?>
+}
+
+function searchkeycb(data){
+  $('#allct').html('');
+  for(var i in data.result){
+    var ht = '<div class="searchct" data-vip="'+data.result[i].ctsvip+'" onclick="select('+data.result[i].ctid+')" id="ctid_'+data.result[i].ctid+'">'+data.result[i].ctname+'</div>';
+    $('#allct').append(ht);
+  }
+}
+
+var leftselected = 0;
+function select(ctid){
+  leftselected = ctid;
+  $('.searchct').css('background-color','unset');
+  $('#ctid_'+ctid).css('background-color','green');
+}
+
+function toright(){
+  if(leftselected > 0){
+
+    var vip = $('#ctid_'+leftselected).attr('data-vip');
+    var tucprice = '';
+    if(vip == 5){
+      var p = prompt('请输入渠道价格(单位分)','');
+      if(p!=null && p!=""){
+        tucprice = p;
+      }else{
+        alert('请输入渠道价格');
+        return ;
+      }
+    }
+
+    var type = 'addcartoonforthirduser';
+    var tuid = $('#autuid').val();
+    var ctid = leftselected;
+    var tucsectionlist = '';
+    var tuctype = 0;
+    <?php
+      $params = array('type','tuid','ctid','tucprice','tucsectionlist','tuctype');
+      echo generate_ajax($params,'torightcb','/action/funcaction.php');
+    ?>
+    leftselected = 0;
+    $('#ctid_'+leftselected).hide();
+  }else{
+    alert('请选择作品');
+  }
+}
+
+function torightcb(data){
+  var tucid = data.result.tucid;
+  var ctid = data.result.ctid;
+  var ht = '<div class="rightselected" data-type="5" id="seltucid_'+tucid+'" onclick="selectright('+tucid+')">';
+  ht += '自动&nbsp;';
+  ht += $('#ctid_'+ctid).html();
+  ht += '</div>';
+  $('#selectedct').append(ht);
+  $('#ctid_'+ctid).hide();
+}
+
+var handtucprice = '';
+function torighthand(){
+  if(leftselected > 0){
+
+    var vip = $('#ctid_'+leftselected).attr('data-vip');
+    handtucprice = '';
+    if(vip == 5){
+      var p = prompt('请输入渠道价格(单位分)','');
+      if(p!=null && p!=""){
+        handtucprice = p;
+      }else{
+        alert('请输入渠道价格');
+        return ;
+      }
+    }
+
+    var ctid = leftselected;
+    var type = 'getsectioninfosbyctid';
+    <?php
+    $params = array('type','ctid');
+    echo generate_ajax($params,'getsectioninfosbyctidcb','/action/cartoonaction.php');
+    ?>
+  }
+}
+
+function getsectioninfosbyctidcb(data){
+  $('#sectlist').html('');
+  for(var i in data.result.ctsinfos){
+    var ht = '<div><label><input checked class="ctsinput" data-ctsid="'+data.result.ctsinfos[i].ctsid+'" id="cts_'+data.result.ctsinfos[i].ctsid+'" type="checkbox"> '+data.result.ctsinfos[i].ctsname+'</label></div>';
+    $('#sectlist').append(ht);
+  }
+
+  $('#sectionselectModal').modal('show');
+}
+
+function torighthand2(){
+  var type = 'addcartoonforthirduser';
+  var tuid = $('#autuid').val();
+  var ctid = leftselected;
+  var tucsectionlist = '';
+  var tucprice = handtucprice;
+  var list = new Array();
+  $('.ctsinput').each(function(){
+    if(this.checked){
+      var ctsid = $(this).attr('data-ctsid');
+      list.push(ctsid)
+    }
+  });
+  tucsectionlist = JSON.stringify(list);
+  var tuctype = 5;
+  <?php
+    $params = array('type','tuid','ctid','tucprice','tucsectionlist','tuctype');
+    echo generate_ajax($params,'torighthandcb','/action/funcaction.php');
+  ?>
+  leftselected = 0;
+  $('#ctid_'+leftselected).hide();
+  $('#sectionselectModal').modal('hide');
+}
+
+function torighthandcb(data){
+  var tucid = data.result.tucid;
+  var ctid = data.result.ctid;
+  var ht = '<div class="rightselected" data-type="5" id="seltucid_'+tucid+'" onclick="selectright('+tucid+')">';
+  ht += '手工&nbsp;';
+  ht += $('#ctid_'+ctid).html();
+  ht += '</div>';
+  $('#selectedct').append(ht);
+  $('#ctid_'+ctid).hide();
+}
+
+function deletetucid(){
+  var tucid = rightselected;
+  if(tucid > 0){
+    if(confirm('确认删除？')){
+    var type = 'deletetucinfobytucid';
+    <?php
+      $params = array('type','tucid');
+      echo generate_ajax($params,'deletetucidcb','/action/funcaction.php');
+    ?>
+    }
+  }
+}
+
+function deletetucidcb(data){
+  $('#seltucid_'+rightselected).hide();
+  rightselected = 0;
+}
+
+function editsection(){
+  if(rightselected > 0){
+    var ty = $('#seltucid_'+rightselected).attr('data-type');
+    if(ty == 5){
+      var tuid = $('#autuid').val();
+      var type = 'gettucinfobytucid';
+      var tucid = rightselected;
+      <?php
+        $params = array('type','tucid','tuid');
+        echo generate_ajax($params,'editsectioncb','/action/funcaction.php');
+      ?>
+    }else{
+      alert('该作品是自动的不能编辑');
+    }
+  }
+}
+
+function getNowFormatDate() {
+    var date = new Date();
+    var seperator1 = "-";
+    var seperator2 = ":";
+    var year = date.getFullYear();
+    var month = date.getMonth() + 1;
+    var strDate = date.getDate();
+    if (month >= 1 && month <= 9) {
+        month = "0" + month;
+    }
+    if (strDate >= 0 && strDate <= 9) {
+        strDate = "0" + strDate;
+    }
+
+    var hour = date.getHours();
+    var minute = date.getMinutes();
+    var second = date.getSeconds();
+    var currentdate = year + seperator1 + month + seperator1 + strDate+ ' ' + hour + seperator2 + minute + seperator2 + second;
+    return currentdate;
+}
+
+var isShfit = false;
+var shfitItem = null;
+var isSeleced = false;
+var prevItem = null;
+
+function checkedAll(obj){
+    if($(obj).is(":checked")){
+        $('.ctseditinput').prop('checked',true);
+        $('.ctseditinput').attr('data-ctime',getNowFormatDate());
+    }else{
+        $('.ctseditinput').prop('checked',false);
+       $('.ctseditinput').attr('data-ctime','');
+    }
+}
+
+function editsectioncb(data){
+   console.log(data)
+  $('#secteditlist').html('');
+   var ht = '<div><lable><input  type="checkbox" onclick="checkedAll(this)">全选/全不选</lable></div>';
+    $('#secteditlist').append(ht);
+   var is_fee = false;
+   var next = false;
+    for(var i in data.result.ctsinfos){
+    var checked = '';
+    if(data.result.tucinfo.tucsectionlist){
+      if(data.result.tucinfo.tucsectionlist.indexOf(data.result.ctsinfos[i].ctsid) !== -1)
+        checked = 'checked';
+    }
+
+    //var index = data.result.tucinfo.tucsectionlist.indexOf(data.result.ctsinfos[i].ctsid);
+
+    var time = '';
+    var type =0;
+    if(data.result.tucinfo.tucsectiontimelist){
+        for (var j in data.result.tucinfo.tucsectiontimelist){
+            if (data.result.tucinfo.tucsectiontimelist[j].ctsid == data.result.ctsinfos[i].ctsid) {
+                time = data.result.tucinfo.tucsectiontimelist[j].time;
+                type = data.result.tucinfo.tucsectiontimelist[j].mode;
+            }
+        }
+    }
+    // if(index !== -1){
+    //     var time = (data.result.tucinfo.tucsectiontimelist) ? (data.result.tucinfo.tucsectiontimelist[index] ? data.result.tucinfo.tucsectiontimelist[index].time : '') : '';
+    //     var type = (data.result.tucinfo.tucsectiontimelist) ? (data.result.tucinfo.tucsectiontimelist[index] ? data.result.tucinfo.tucsectiontimelist[index].mode : 0) : 0;
+    // }else{
+    //     var time = '';
+    //     var type = 0;
+    // }
+    var text = '';
+    if(data.result.ctsinfos[i].ctsid == data.result.tucinfo.ctsid){
+        is_fee = true;
+    }
+    if(is_fee){
+        var imgg = '<img style="width:18px" src="/assets/images/locked_16.png">';
+    } else{
+        var imgg = '';
+    }
+    if(type == 1) {
+        var color = 'red';
+        text = '自动同步';
+    }else if(type == 2){
+        var color = 'orange';
+        text = '定时发布';
+    }else{
+        var color = '#393939';
+    }
+
+    if(data.result.ctsinfos[i].ctrrid == null || data.result.ctsinfos[i].ctrrid == ''){
+        color = "grey";
+    }
+    if(next == true){
+        color = "#70712B";
+        text = '即将发布';
+        next = false;
+    }
+    if(data.result.ctsinfos[i].ctsid == data.result.tucinfo.next){
+        next = true;
+    }
+    var ht = '<div class="checkbox_click_item" data-index="'+i+'"><label style="color:'+color+'"><input '+checked+' class="ctseditinput" data-ctsid="'+data.result.ctsinfos[i].ctsid+'" data-ctime="'+time+'" id="cts_'+data.result.ctsinfos[i].ctsid+'" type="checkbox" onclick="changetime(this)"> '+data.result.ctsinfos[i].ctsname+'|'+text+'</label>&nbsp;&nbsp;<span style="margin-right: 90px;float:right">'+time+'</span><span style="margin-right: 20px;float:right">'+imgg+'</span></div>';
+    $('#secteditlist').append(ht);
+  }
+
+  $('#sectioneditModal').modal('show');
+}
+
+function changetime(obj){
+        if(obj.checked){
+           $(obj).attr('data-ctime',getNowFormatDate());
+        }
+}
+
+function torighthand3(){
+  var type = 'updatecartoonforthirduser';
+  var tucid = rightselected;
+  var tucsectionlist = '';
+  var tucsectiontimelist = '';
+  var timelist = new Array();
+  var list = new Array();
+  $('.ctseditinput').each(function(){
+    if(this.checked){
+      var ctsid = $(this).attr('data-ctsid');
+      var ctime = $(this).attr('data-ctime');
+      if(ctime == '' || ctime == 'undefined'){
+         ctime = getNowFormatDate();
+      }
+      list.push(ctsid)
+        timelist.push({ctsid:ctsid,time:ctime})
+    }
+  });
+  console.log(timelist);console.log(JSON.stringify(timelist));
+  tucsectionlist = JSON.stringify(list);
+    tucsectiontimelist = JSON.stringify(timelist);
+  <?php
+    $params = array('type','tucid','tucsectionlist','tucsectiontimelist');
+    echo generate_ajax($params,'torighthand3cb','/action/funcaction.php');
+  ?>
+  $('#sectioneditModal').modal('hide');
+}
+
+function torighthand3cb(data){
+}
+
+function editauthstate(tuid, tuustate,tuuauthenddate){
+  $('#tuid').val(tuid);
+  $('#tuustate').val(tuustate);
+  $('#tuuauthenddate').val(tuuauthenddate);
+  $('#authstateModal').modal('show');
+}
+
+
+function isEmpty(obj) {
+    // 检验 undefined 和 null
+    if(!obj && obj !== 0 && obj !== '') {
+        return true;
+    }
+    if(Array.prototype.isPrototypeOf(obj) && obj.length === 0) {
+        return true;
+    }
+
+    if(Object.prototype.isPrototypeOf(obj) && Object.keys(obj).length === 0) {
+        return true;
+    }
+
+    return false;
+}
+
+function saveauthstate(){
+  var tuid = $('#tuid').val();
+  var tuustate = $('#tuustate').val();
+  var tuuauthenddate= $('#tuuauthenddate').val();
+  var type = 'savethirduserauthstate';
+  <?php
+    $params = array('type','tuid','tuustate','tuuauthenddate');
+    echo generate_ajax($params,'cb','/action/funcaction.php');
+  ?>
+}
+
+  <?php if ($uinfo['uqudaodesc'] == 0){ ?>
+  $('#qudaodescModal').modal('show');
+  <?php } ?>
+
+  function setqudaodescview(){
+    var type = 'savequdaodescview';
+    <?php
+    $params = array('type');
+    echo generate_ajax($params,'cb','/action/funcaction.php');
+    ?>
+  }
+
+</script>
+</body>
+</html>

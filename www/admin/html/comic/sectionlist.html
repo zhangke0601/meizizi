@@ -1,0 +1,210 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+require_once($base_dir.'model/clsCartoonSectioninfos.php');
+$title = '';
+$nav = 'index';
+require_once($base_dir.'www/admin/html/comic/head.html');
+
+$cart = new Cartooninfos();
+$sect = new CartoonSectioninfos();
+$ctid = GetItemFromArray($_GET,'ctid');
+$cartinfo = $cart->find($ctid);
+
+$search = GetItemFromArray($_GET,'search');
+$p = GetItemFromArray($_GET,'p');
+list($count,$sectioninfos) = $sect->GetCartoonSectionInfosByParams($ctid,$p,$search);
+$pagecount = ceil($count/COUNT_PER_PAGE);
+//$sectioninfos = $sect->getinfos(sprintf('ctid=%d', $ctid));
+foreach($sectioninfos as $idx=>$info)
+{
+  $content = json_decode($info['ctscontent'], true);
+  $sectioninfos[$idx]['ctsimgcount'] = count($content);
+}
+?>
+
+<div class="container" style="background-color:white">
+  <div class="row" >
+    <div style="line-height:40px;font-size:25px"><?php echo $cartinfo['ctname'];?></div>
+  </div>
+  <div class="row" style="">
+      <form>
+          <input id="search" name="search" placeholder="输入章节名称查询" class="form-control" style="width:200px;float:left;margin-right:10px" value="<?php echo $search;?>"/>
+          <input id="ctid" name="ctid" type="hidden" value="<?php echo $ctid;?>"/>
+          <input type="submit" class="btn btn-default " value="查询">
+          <a class="btn btn-primary btn-sm pull-right" href="sectioninfo.html?ctid=<?php echo $ctid;?>" >新增章节</a>
+          <a class="btn btn-primary btn-sm pull-right" href="index.html" style="margin-right:30px">返回作品列表</a>
+      </form>
+  </div>
+  <div class="row">
+    <table class="table">
+      <thead><td>ID</td><td>章节名称</td><td>启用状态</td><td>图片数量</td><td>排序</td><td>添加时间</td><td>操作</td></thead>
+    <?php
+      foreach($sectioninfos as $info)
+      {
+        echo sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
+           $info['ctsid'], $info['ctsname'],
+           $ctstates[$info['ctsstate']], $info['ctsimgcount'],
+           $info['ctssort'],$info['ctscreatetime'],
+           sprintf('<a href="javascript:void(0)" onclick="preview(%d);">预览</a>
+           <a href="javascript:void(0)" onclick="getreleasestates(%d);" style="margin-left:10px">发布情况</a>
+           <a href="sectioninfo.html?ctid=%d&ctsid=%s" style="margin-left:10px;margin-right:10px">编辑</a>
+           <a onclick="deletesection(%d)" href="javascript:void(0)">删除</a>', $info['ctsid'], $info['ctsid'], $ctid, $info['ctsid'], $info['ctsid']));
+      }
+    ?>
+    </table>
+      <div class="text-center"><span class="text-center"><?php echo get_view_for_page_index($p, $pagecount, '?'.build_query(array('p'=>'%s')));?></span></div>
+
+  </div>
+
+</div>
+<!-- 预览 -->
+<div class="modal fade bs-example-modal-lg" id="ctsModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabel">章节预览</h4>
+      </div>
+      <div class="modal-body" style="text-align:center"  id='ctsimgcontent'>
+        <div >
+          <img id="ctsimgurl" style="width: 500px;height: 300px;">
+        </div>
+          <a onclick="lastpage()" >上一页</a>
+          <a onclick="nextpage()" >下一页</a>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 发布情况 -->
+<div class="modal fade bs-example-modal-lg" id="releaseModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="releaselabel">发布情况</h4>
+      </div>
+      <div class="modal-body" style="text-align:center" id='releaseinfos'>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <script>
+var page = 1;
+var imgurlinfos = {};
+function preview(ctsid)
+{
+  var type = 'getsectionimgurls';
+  <?php
+  $params = array('type','ctsid');
+  echo generate_ajax($params,'showctsimg','/action/cartoonaction.php');
+  ?>
+}
+function showctsimg(data)
+{
+  imgurlinfos = data.imgurl;
+  imgurlcount = data.imgirlcount;
+  //$('#ctsimgurl').attr('src',imgurlinfos['1']['imgurl']);
+  //page = 1;
+  var ht = '';
+  for(var i in imgurlinfos)
+  {
+    ht += '<img src="'+imgurlinfos[i]['imgurl']+'" style="width:100%;margin-bottom:00px">';
+    //ht += '<hr>';
+  }
+  if(ht.length > 0)
+    $('#ctsimgcontent').html(ht);
+  else
+    $('#ctsimgcontent').html('<center>暂无内容</center>');
+
+  $('#ctsModal').modal('show');
+}
+    function nextpage()
+    {
+        var pagenumber = page+1;
+        if( pagenumber > imgurlcount)
+        {
+            alert('已是最后一页');
+        }
+        else
+        {
+            $('#ctsimgurl').attr('src',imgurlinfos[pagenumber]['imgurl']);
+            page = pagenumber;
+        }
+    }
+    function lastpage()
+    {
+        var pagenumber = page-1;
+        if(pagenumber < 1)
+            alert('已是第一页了');
+        else
+        {
+            $('#ctsimgurl').attr('src',imgurlinfos[pagenumber]['imgurl']);
+            page = pagenumber;
+        }
+
+    }
+</script>
+
+<script>
+function deletesection(ctsid)
+{
+  if(confirm('确认删除？'))
+  {
+    var type = 'deletesectioninfo';
+    <?php
+    $params = array('type','ctsid');
+    echo generate_ajax($params,'cb','/action/cartoonaction.php');
+    ?>
+  }
+}
+
+function cb(data)
+{
+  window.location.reload();
+}
+  </script>
+  <script>
+function getreleasestates(ctsid)
+{
+  var type = 'getreleaseinfosbyctsid';
+  <?php
+  $params = array('type','ctsid');
+  echo generate_ajax($params,'releasestatescb','/action/cartoonaction.php');
+  ?>
+}
+
+function releasestatescb(data)
+{
+  $('#releaselabel').html('章节名：'+data.result.ctsinfo.ctsname);
+  var ht = '<table class="table">';
+  ht += '<tr><td>ID</td><td>章节名称</td><td>状态</td><td>平台</td><td>操作</td></tr>';
+  if(data.result.ctrrinfos.length > 0)
+  {
+    for(var i in data.result.ctrrinfos)
+    {
+      ht += '<tr><td>'+data.result.ctrrinfos[i].ctrrid+'</td><td>'+data.result.ctrrinfos[i].ctsinfo.ctsname+'</td><td>'+data.result.ctrrinfos[i].ctrrstatename+'</td><td>'+data.result.ctrrinfos[i].pfname+'</td><td></td></tr>';
+    }
+  }
+  else
+  {
+    ht += '<tr><td colspan="5" style="text-align:center">无记录</td></tr>';
+  }
+  ht += '</table>';
+ 
+  $('#releaseinfos').html(ht);
+  $('#releaseModal').modal('show');
+}
+
+  </script>
+
+</body>
+</html>

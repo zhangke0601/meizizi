@@ -1,0 +1,363 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+$nav = 'userinfo';
+require_once($base_dir.'www/admin/html/studio/head.html');
+?>
+<style>
+    .px{
+        float: right;
+        margin-top: 8px;
+        margin-right:0px;
+        color: red;
+    }
+    .table thead>tr>th, .table tbody>tr>th, .table tfoot>tr>th, .table thead>tr>td, .table tbody>tr>td, .table tfoot>tr>td{
+      border:0px
+    }
+</style>
+
+<div class="container"  style="min-height:63px">
+ <div class="row" style="line-height:64px;margin:0px 0px 0px 10px;color:#323232">
+   个人中心
+</div>
+</div>
+
+<div class="container"  style="min-height:63px">
+<div class="navbar-header" role="navigation" style="background-color:#f4f4f4;border: solid 1px #dddddd;width:1110px;margin-top:20px;margin-left:10px">
+    <ul class="nav ace-nav">
+        <li class="light-blue" style="height:42px;line-height:42px;width:108px">
+            <a href="javascript:void(0)" id="a_1" onclick="showuinfo(1)"  class="" style="background-color:white;color:#0d7ac6;">用户信息</a>
+        </li>
+        <li class="light-blue" style="height:42px;line-height:42px;width:108px">
+            <a href="javascript:void(0)" id="a_2" onclick="showuinfo(2)"  class="" style="background-color:#f4f4f4;color:gray;">更换手机号</a>
+        </li>
+        <li class="light-blue" style="height:42px;line-height:42px;width:108px">
+            <a href="javascript:void(0)" id="a_3" onclick="showuinfo(3)"  class="" style="background-color:#f4f4f4;color:gray;">修改密码</a>
+        </li>
+    </ul><!-- /.ace-nav -->
+</div>
+</div>
+
+<div class="container" id="uinfo" style="margin-top:0px">
+    <div class="center-block" style="margin-top:40px">
+        <div class="center-block" style="width:550px;background-color:white;">
+            <div style="padding:00px 20px 20px 20px;">
+                <table class="table">
+                    <tr style="border:0px">
+                        <td>真实姓名:</td>
+                        <td>
+                            <input value="<?php echo $uinfo['urealname']?>"
+                                   class="easyui-validatebox form-control"
+                                   id="urealname" name="urealname" placeholder="真实姓名"
+                                  style="float:left;width:400px"
+                            />
+                            <!--data-options="required:true,missingMessage:'此项必输'"-->
+                            <p class="px">*</p>
+                        </td>
+                    </tr>
+                    <tr style="border:0px;background-color:white">
+                        <td>性别:</td>
+                        <td>
+                            <label><input value="5"  type="radio" name="usex"  <?php if($uinfo['usex']==SEX_NAN) echo 'checked';?> />&nbsp;男</label>
+                            &nbsp;&nbsp;&nbsp;&nbsp;
+                            <label><input value="10"  type="radio" name="usex" <?php if($uinfo['usex']==SEX_NV) echo 'checked';?> />&nbsp;女</label>
+
+                        </td>
+                    </tr>
+                    <!-- <tr>
+                         <td>出生年月日:</td>
+                         <td>
+                             <input class="form-control" id="urealname" name="" />
+                         </td>
+                     </tr>-->
+                </table>
+                <div class="" style="margin-left:8px">
+                    <button class="btn btn-primary btn-sm" style="width:90px;background-color:#0d7ac6;color: white;border-radius: 10px;height:35px" onclick="updateuserinfo()">确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- -->
+<div class="container" id="firststepinfos" style="display: none;margin-top:0px">
+    <div class="center-block" style="margin-top:40px">
+        <div class="center-block" style="width:400px;background-color:white;">
+            <div style="padding:0px 20px 20px 20px;">
+                <table class="table">
+                    <tr style="border:0px">
+                        <td>原手机号:</td>
+                        <td>
+                            <input type="hidden" value="<?php echo $uinfo['umobile']?>" id="umobile" name="umobile" />
+                            <span style="float:right"><?php echo $uinfo['umobile']?></span>
+                        </td>
+                    </tr>
+                    <tr style="background-color:white;border:0px">
+                        <td>
+                            <div style="height:34px">
+                                <input class="form-control" id="vcode" name="vcode" placeholder="手机验证码" style="margin-bottom:0px;width:60%;float:left;width:200px"/>
+
+                            </div>
+                        </td>
+                        <td>
+                            <div style="height:34px">
+                                <button style="margin-top:0px;margin-left:10px" id="getvcodebtn10" class="btn btn-default btn-sm" onclick="sendvcode(10);">获取手机验证码</button>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+                <div class="" style="margin-left:8px">
+                    <button class="btn btn-primary btn-sm" style="width:90px;background-color: #0d7ac6;color: white;border-radius: 10px;height:35px" onclick="nextstep()">下一步</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!--
+            $('#firststepinfos').hide();
+            $('#secondstepinfos').hide();-->
+<div class="container" id="secondstepinfos" style="display: none;margin-top:0px">
+    <div class="center-block" style="margin-top:40px">
+        <div class="center-block" style="width:450px;background-color:white;">
+            <div style="padding:0px 20px 20px 20px;">
+                <table class="table">
+                    <tr style="border:0px">
+                        <td>新手机号:</td>
+                        <td style="width:300px">
+                            <input  id="xmobile" name="xmobile" class="form-control" style="width:260px;display:initial" />
+                            <p class="px">*</p>
+                        </td>
+                    </tr>
+                    <tr style="border:0px;background-color:white">
+                      <td colspan="2">
+                        <div style="height:34px;display:initial">
+                          <input class="form-control" id="mvcode" name="mvcode" placeholder="手机验证码" style="margin-bottom:10px;width:60%;float:left"/>
+                        </div>
+                        <div style="height:34px">
+                          <button style="margin-top:0px;margin-left:10px" id="getvcodebtn20" class="btn btn-default btn-sm" onclick="sendvcode(20);">获取手机验证码</button>
+                        </div>
+                      </td>
+                    </tr>
+                </table>
+                <div class="">
+                    <button class="btn btn-default btn-sm" style="width:90px;background-color: #0d7ac6;color: white;border-radius: 10px;height:35px" onclick="updatemobile()">确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="container" id="passwdinfo" style="display: none;margin-top:0px">
+    <div class="center-block" style="margin-top:40px">
+        <div class="center-block" style="width:450px;background-color:white;">
+            <div style="padding:0px 20px 20px 20px;">
+              <table class="table" style="width:440px">
+                <tr style="border:0px"><td>
+                    <input class="form-control" type="password"  id="ypwd" name="ypwd" placeholder="原密码" style="width:400px;float:left"/><p class="px">*</p></td></tr><tr style="border:0px;background-color:white"><td>
+                    <input class="form-control" type="password" id="xpwd" name="xpwd" placeholder="新密码，至少6位，数字字母组合" style="width:400px;float:left"/><p class="px" style="margin-top: 8px;">*</p></td></tr><tr style="border:0px"><td>
+                    <input class="form-control" type="password" id="xxpwd" name="xxpwd" placeholder="再次输入新密码，至少6位，数字字母组合" style=";width:400px;float:left"/><p style="margin-top: 8px;" class="px">*</p></td></tr></table>
+                <div class="" style="margin-left:8px">
+                    <button class="btn btn-primary btn-sm" style="width:90px;background-color: #0d7ac6;color: white;border-radius: 10px;height:35px" onclick="updatepwd()">确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    //$('#a_1').css("color","#8a472d");
+   /* $('#urealname').validatebox({
+        //required: true,
+        validType: 'email'
+        /!*missingMessage:"提示"*!/
+    });*/
+    /*  */
+    function showuinfo(type)
+    {
+        $('#a_1').css("color","gray");
+        $('#a_2').css("color","gray");
+        $('#a_3').css("color","gray");
+        $('#a_1').css("background-color","rgb(244, 244, 244)");
+        $('#a_2').css("background-color","rgb(244, 244, 244)");
+        $('#a_3').css("background-color","rgb(244, 244, 244)");
+        if(type == 1)
+        {
+            $('#uinfo').show();
+            $('#firststepinfos').hide();
+            $('#secondstepinfos').hide();
+            $('#passwdinfo').hide();
+        }
+        else if(type == 2)
+        {
+            $('#uinfo').hide();
+            $('#firststepinfos').show();
+            $('#secondstepinfos').hide();
+            $('#passwdinfo').hide();
+        }
+        else if( type == 3)
+        {
+            $('#uinfo').hide();
+            $('#firststepinfos').hide();
+            $('#secondstepinfos').hide();
+            $('#passwdinfo').show();
+        }
+        $('#a_'+type).css("color","#0d7ac6");
+        $('#a_'+type).css("background-color","white");
+    }
+    function updateuserinfo()
+    {
+        var type = 'updateuinfo';
+        var urealname = $('#urealname').val();
+        var usex=$('input:radio[name="usex"]:checked').val();
+        if(checkitemnull(urealname,'真实姓名'))
+        {
+            if(usex == undefined)
+            {
+                alert('选择性别');return;
+            }
+
+            <?php
+            $params = array('type','urealname','usex');
+                echo generate_ajax($params,'tishi','/action/useraction.php');
+            ?>
+        }
+
+    }
+    function tishi(data)
+    {
+        alert('操作成功');
+        window.location.reload();
+    }
+    /* 发送验证码 */
+    function sendvcode(sutype)
+    {
+      curid = sutype;
+        var type = 'getcode';
+        if(sutype == 10)
+        {
+            var mobile = $('#umobile').val();
+        }
+        else if(sutype == 20)
+        {
+            var mobile = $('#xmobile').val();
+        }
+        if(!(/^1[34578]\d{9}$/.test(mobile))){
+            alert("手机号码有误，请重填");
+            return false;
+        }
+        else
+        {
+            <?php
+                $params = array('type','mobile');
+                echo generate_ajax($params,'alerttishi','/action/useraction.php');
+            ?>
+        }
+    }
+    //function alerttishi(data)
+    //{
+    //    alert('短信已发送，请查收');
+    //}
+var inter;
+var seconds = 60;
+var curseconds = 60;
+var curid = '';
+
+    function alerttishi(data)
+    {
+      $('#getvcodebtn'+curid).attr('disabled',true);
+  curseconds = seconds;
+  $('#getvcodebtn'+curid).html(curseconds+'s后重新获取');
+  inter = setInterval(vcodebtnupdate,1000);
+ 
+        //alert('短信已发送，请查收');
+    }
+function vcodebtnupdate()
+{
+  if(curseconds > 0)
+  {
+    --curseconds;
+    $('#getvcodebtn'+curid).html(curseconds+'s后重新获取');
+  }
+  else
+  {
+    $('#getvcodebtn'+curid).html('获取手机验证码');
+    $('#getvcodebtn'+curid).removeAttr('disabled');
+    window.clearInterval(inter);
+  }
+}
+    /* 下一步 验证  */
+    function nextstep()
+    {
+        var type = 'verifymobileandcode';
+        var mobile = $('#umobile').val();
+        var vcode = $('#vcode').val();
+        <?php
+    $params = array('type','vcode','mobile');
+            echo generate_ajax($params,'secondstep','/action/useraction.php');
+        ?>
+    }
+    /*  */
+    function secondstep(data)
+    {
+        alert('验证成功');
+        $('#firststepinfos').hide();
+        $('#secondstepinfos').show();
+    }
+    /* 修改手机号 */
+    function updatemobile()
+    {
+        var type = 'updatemobile';
+        var vcode = $('#mvcode').val();
+        var mobile = $('#xmobile').val();
+        if( checkitemnull(mobile,'手机号') && checkitemnull(vcode,'验证码'))
+        {
+            if(!(/^1[34578]\d{9}$/.test(mobile))){
+                alert("手机号码有误，请重填");
+                return false;
+            }
+            else
+            {
+                <?php
+            $params = array('type','mobile','vcode');
+                    echo generate_ajax($params,'tishi','/action/useraction.php');
+                ?>
+            }
+
+        }
+    }
+    /* 修改密码 */
+    function updatepwd()
+    {
+        var type = 'updatepwd';
+        var ypwd = $('#ypwd').val();
+        var xpwd = $('#xpwd').val();
+        var xxpwd = $('#xxpwd').val();
+        if( checkitemnull(ypwd,'原密码') &&  checkitemnull(xpwd,'新密码'))
+        {
+            if(xpwd == xxpwd)
+            {
+                <?php
+            $params = array('type','ypwd','xpwd');
+                echo generate_ajax($params,'tishi','/action/useraction.php');
+                ?>
+            }
+            else
+            {
+                alert('两次密码不一致');
+            }
+
+        }
+    }
+
+
+    function checkitemnull(str, viewstr)
+    {
+        if((str!=null) && (str.length>0))
+            return true;
+        else
+        {
+            alert(viewstr+"为空");
+            return false;
+        }
+    }
+
+</script>
+</body>
+</html>

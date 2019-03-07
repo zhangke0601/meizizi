@@ -1,0 +1,30 @@
+
+.datagrid a {
+    font-size: 11pt;
+	text-decoration: none;
+}
+
+.datagrid thead th,
+.datagrid tbody td {
+    padding-left: 5px;
+	padding-right: 5px;
+    border: 1px solid #ccc;
+    white-space: nowrap
+}
+
+.datagrid .col_7{
+  
+}
+
+.datagrid thead {
+    background-color: #eee;
+	text-align: left;
+}
+
+.datagrid tfoot {
+	border: 0px;
+}
+
+.mouseover {
+    background-color: #9cc4eb;
+}

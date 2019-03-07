@@ -1,0 +1,38 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+$title = '公告';
+$nav = 'gonggao';
+require_once($base_dir.'www/admin/html/studio/head.html');
+
+$uanid = GetItemFromArray($_GET,'uanid');
+$ninfo = $notice->GetInfoByUanid($uanid);
+
+if($ninfo){
+  if($ninfo['uanstate'] == STATE_NOR)
+  {
+    $notice->UpdateReadState($ninfo['uanid'], STATE_POST);
+  }
+}
+?>
+
+<style>
+.col-xs-3{text-align:center;line-height:40px}
+</style>
+
+<div class="container " style="">
+  <div style="margin-top:40px;width:500px;margin:100px auto;padding:20px;font-size:13px;border:3px solid #ccc" class="">
+    <h3 style=";height:65px;text-align:center;margin-bottom:0px"><?php echo $ninfo['ntitle'];?></h3>
+    <pre style="text-indent:2em; "><?php echo $ninfo['ncontent'];?></pre>
+    <?php
+      if(!empty($ninfo['nattachments'])){
+        $as = json_decode($ninfo['nattachments'], true);
+        echo sprintf("附件：<a href='%s?attname=%s'>%s</a>", $as[0]['fileurl'], $as[0]['filename'], $as[0]['filename']);
+      }
+    ?>
+  </div>
+</div>
+<script>
+</script>
+</body>
+</html>

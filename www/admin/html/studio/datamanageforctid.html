@@ -1,0 +1,655 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+require_once($base_dir.'model/clsPlatforminfos.php');
+$title = '漫画工作室管理系统';
+$nav = 'datamanage';
+require_once($base_dir.'www/admin/html/studio/head.html');
+
+$pf = new Platforminfos();
+$cart = new Cartooninfos();
+$ctid = GetItemFromArray($_GET,'ctid');
+
+$cartinfos = $cart->getinfos(sprintf('uid=%d', $uid));
+$p = GetItemFromArray($_GET,'p');
+$search = GetItemFromArray($_GET,'search');
+list($totalcount,$cartinfos) = $cart->StudioGetCartooninfosByParams($uid,$p,$search);
+
+foreach($cartinfos as $idx=>$cartinfo)
+{
+  $cartinfos[$idx]['ctprogressname'] = $progresses[$cartinfo['ctprogress']];
+  $stat = $cart->GetReleaseStatByCtid($cartinfo['ctid']);
+  $stat = GetKeyAndValueFromArray($stat,'ctrrstate','count');
+  $cartinfos[$idx]['ctrrstat'] = $stat;
+}
+$pagecount = ceil($totalcount/COUNT_PER_PAGE);
+
+$pfinfos = $pf->getinfos('pfstate=0');
+$upfinfos = array();
+foreach($pfinfos as $idx=>$pfinfo)
+{
+  $upfinfo = $pf->existUserAndPlatform($uid,$pfinfo['pfid']);
+  if($upfinfo)
+  {
+    $upfinfo['pfinfo'] = $pfinfo;
+    $upfinfos[] = $upfinfo;
+  }
+}
+?>
+
+<style>
+.col-xs-3{text-align:center;line-height:40px}
+</style>
+
+<div class="container" style="">
+ <div class="row" style="margin:20px 0px"> <!--style="display:none"-->
+     <form>
+       <input id="search" name="search" placeholder="输入作品名查询" class="form-control" style="width:400px;float:left;margin-right:10px" value="<?php echo $search;?>"/>
+    <input type="submit" class="btn btn-primary btn-sm" value="查询" style="width:90px">
+
+     </form>
+ </div>
+ <div class="row" id="editdetail">
+ </div>
+  <div class="row" style="display:none">
+      <table class="table table-bordered" style="text-align:center">
+          <thead >
+          <td>作品名</td><td>作者</td><td>进度</td><td>平台数据</td>
+          </thead>
+          <?php
+              foreach($cartinfos as $cartinfo)
+              {
+                $issuestate = 0;
+                $getfeedback = sprintf('<a href="javascript:void(0)" onclick="getfeedbackinfo(%d)">查看详情</a>',$cartinfo['ctid']);
+                echo sprintf('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td>
+                  </tr>',
+                  $cartinfo['ctname'],$cartinfo['ctauthorname'],$cartinfo['ctprogressname'],
+                  $getfeedback);
+              }
+          ?>
+      </table>
+      <div class="text-center"><span class="text-center"><?php echo get_view_for_page_index($p, $pagecount, '?'.build_query(array('p'=>'%s')));?></span></div>
+
+
+  </div>
+    <div class="modal fade bs-example-modal-lg" id="feedbackinfo" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myModalLabel">日统计</h4>
+                </div>
+                <div class="modal-body" id="editdetailctid">
+                        <div>浏览总量:<span id="browse"></span></div>
+                        <div>收藏总量:<span id="collect"></span></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--  -->
+    <div class="modal fade bs-example-modal-lg" id="releasemodal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myModalLabe2">一键发布</h4>
+                </div>
+                <div class="modal-body" id="" style="padding-bottom:0px">
+                  <input type="hidden" id="ctid" name="ctid" />
+                  <input type="hidden" id="ctsid" name="ctsid" />
+                  <h4 style="display:none">待发布章节  <small id="unsection"></small></h4>
+                  <table class="table" style="margin-bottom:0px">
+                    <tr ><td style="width:100px">选择发布时间</td><td><input class="form-control" id="ctrrreleasetime" value="" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd HH:mm' })" data-date-format="yyyy-mm-dd" placeholder="如果需要定时发布，在这里设置时间" ></td></tr>
+                    <tr><td>选择发布平台</td><td>
+                  <div class="row">
+                  <?php
+                    foreach($upfinfos as $info)
+                    {
+                      echo sprintf('<div class="col-sm-6 upfiddiv" id="upfiddiv%d"><label><input type="checkbox" class="upfid" id="upfid%d" name="upfid%d" >&nbsp;%s</label>&nbsp;&nbsp;<label class="csreleasetypelabel"><input type="radio" class="csreleasetype" id="csreleasetype%d" name="csreleasetype" onclick="clickreleasetype(%d)" value="%s">&nbsp;是否独家</label></div>', $info['upfid'], $info['upfid'], $info['upfid'], $info['pfinfo']['pfname'], $info['upfid'],$info['upfid'],$info['upfid']);
+                    }
+                  ?>
+                  <div class="col-sm-6"><a class="btn btn-default btn-sm csreleasetypelabel"  onclick="clearfirst();">清除独家</a></div>
+                  </div>
+                  <span class="csreleasetypelabel" style="color:gray">注：选择独家时不能选择其他平台，不选择为无独家平台</span>
+                    </td></tr>
+                    <tr id="csfirstreleasetr"><td>首发状态</td><td>
+                      <div>
+                      <?php
+                    foreach($upfinfos as $info)
+                    {
+                      echo sprintf('<div style="float:left"><label><input class="csfirstrelease" id="csfirstrelease%d" name="csfirstrelease%d" type="checkbox" onclick="clickfirstrelease(%d)"/>&nbsp;%s</label>&nbsp;&nbsp;&nbsp;&nbsp;</div>', $info['upfid'], $info['upfid'], $info['upfid'], $info['pfinfo']['pfname']);
+                    }
+                      ?>
+                      </div>
+                    </td></tr>
+                    <tr style="display:none" id="prevtr"><td></td><td>
+                        <div><input type="radio" name="csprevtype" value="1" />&nbsp;提前<input id="csprevvalue1" style="width:40px;margin-left:5px;margin-right:5px">天</div>
+                        <div><input type="radio" name="csprevtype" value="2" />&nbsp;提前<input id="csprevvalue2" style="width:40px;margin-left:5px;margin-right:5px">话</div>
+                    </td></tr>
+                    <tr><td></td><td id="sectlist"></td></tr>
+                  </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick='submitrelease();'>确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript" src="/assets/js/echarts.js"></script>
+<script type="text/javascript">
+// 路径配置
+/*require.config({
+  paths: {
+    echarts: '/assets/js/'
+  }
+});*/
+</script>
+<script>
+
+//gettotalstat();
+/*获取总的统计数据*/
+function gettotalstat()
+{
+  var type = 'getstatfortotal';
+  <?php
+  $params = array('type');
+  echo generate_ajax($params,'gettotalstatcb','/action/cartoonaction.php');
+  ?>
+}
+
+var echartsoptions = {};
+function gettotalstatcb(data)
+{
+  var ht = '<div class="tabbable">';
+  ht += '		<ul class="nav nav-tabs" id="myTab">';
+  for(var i in data.result.tabs)
+  {
+    var c = '';
+    if(i == 0)
+      c = 'active';
+		ht += '<li class="'+c+'">';
+		ht += '  <a data-toggle="tab" href="#home'+i+'">';
+		ht += '	   <i class="green bigger-110"></i>';
+	  ht += '		'+data.result.tabs[i]+'</a></li>';
+  }
+  ht += '</ul>';
+
+  ht += '<div class="tab-content">';
+  for(var i in data.result.tabs)
+  {
+    var c = '';
+    if(i == 0)
+      c = 'active';
+	  ht += '<div style="height:40px" id="home'+i+'" class="tab-pane '+c+'">';
+    if(i == 0 ){
+      ht += '<div class="col-xs-3">今日收入'+data.result.income.curday+'</div>';
+      ht += '<div class="col-xs-3">昨日收入'+data.result.income.preday+'</div>';
+      ht += '<div class="col-xs-3">本月收入'+data.result.income.curmon+'</div>';
+      ht += '<div class="col-xs-3">累计收入'+data.result.income.total+'</div>';
+    }else if(i==1){
+      ht += '<div class="col-xs-3">今日'+data.result.hit.curday+'</div>';
+      ht += '<div class="col-xs-3">昨日'+data.result.hit.preday+'</div>';
+      ht += '<div class="col-xs-3">本月'+data.result.hit.curmon+'</div>';
+      ht += '<div class="col-xs-3">累计'+data.result.hit.total+'</div>';
+    }else if(i==2){
+      ht += '<div class="col-xs-3">今日'+data.result.tu.curday+'</div>';
+      ht += '<div class="col-xs-3">昨日'+data.result.tu.preday+'</div>';
+      ht += '<div class="col-xs-3">本月'+data.result.tu.curmon+'</div>';
+      ht += '<div class="col-xs-3">累计'+data.result.tu.total+'</div>';
+    }else if(i==3){
+      ht += '<div class="col-xs-3">今日'+data.result.cang.curday+'</div>';
+      ht += '<div class="col-xs-3">昨日'+data.result.cang.preday+'</div>';
+      ht += '<div class="col-xs-3">本月'+data.result.cang.curmon+'</div>';
+      ht += '<div class="col-xs-3">累计'+data.result.cang.total+'</div>';
+    }
+	  ht += '</div>';
+    ht += '<div id="mainecharts'+i+'" style="height:400px"></div>';
+  }
+  ht += '							</div>';
+  ht += '				</div>';
+
+  //ht += '<div id="mainecharts" style="height:400px"></div>';
+
+  $('#editdetail').html(ht);
+
+  var myChart = echarts.init(document.getElementById('maincharts'));
+  var option = {
+    tooltip: {
+      show: true
+    },
+    legend: {
+      data:['销量']
+    },
+    xAxis : [
+      {
+        type : 'category',
+        data : ["衬衫","羊毛衫","雪纺衫","裤子","高跟鞋","袜子"]
+      }
+    ],
+    yAxis : [
+      {
+        type : 'value'
+      }
+    ],
+    series : [
+      {
+        "name":"销量",
+        "type":"bar",
+        "data":[5, 20, 40, 10, 10, 20]
+      }
+    ]
+  };
+
+  // 为echarts对象加载数据
+  myChart.setOption(option);
+
+}
+
+
+
+getfeedbackinfo(<?php echo $ctid;?>);
+/* 查看反馈数据 */
+function getfeedbackinfo(ctid)
+{
+  var type = 'getmonthstatbyctid';
+  <?php
+  $params = array('type','ctid');
+  echo generate_ajax($params,'getfeedcb', '/action/cartoonaction.php');
+  ?>
+}
+
+function getfeedcb(data)
+{
+  var ht = '<div class="tabbable">';
+  ht += '		<ul class="nav nav-tabs" id="myTab">';
+  for(var i in data.result.tabs)
+  {
+    var c = '';
+    if(i == 0)
+      c = 'active';
+		ht += '<li class="'+c+'" onclick="changetab('+i+')">';
+		ht += '  <a data-toggle="tab" href="#homectid'+i+'">';
+		ht += '	   <i class="green bigger-110"></i>';
+	  ht += '		'+data.result.tabs[i]+'</a></li>';
+  }
+  ht += '</ul>';
+
+  ht += '<div class="tab-content">';
+  var options = new Array();
+  for(var i in data.result.tabs)
+  {
+    var c = 'active';
+    if(i == 0)
+      c = 'active';
+	  ht += '<div id="homectid'+i+'" class="tab-pane '+c+'" >';
+    var option = {tooltip:{show:true}, legend:{data:[]}, xAxis:[{type:'category',data:[]}],yAxis:[{type:'value'}],series:[] };
+
+    if(i == 0 ){
+      ht += '<div class="col-xs-3">今日收入'+data.result.income.curday+'</div>';
+      ht += '<div class="col-xs-3">昨日收入'+data.result.income.preday+'</div>';
+      ht += '<div class="col-xs-3">本月收入'+data.result.income.curmon+'</div>';
+      ht += '<div class="col-xs-3">累计收入'+data.result.income.total+'</div>';
+    }else if(i==1){
+      ht += '<div class="col-xs-3">今日'+data.result.hit.curday+'</div>';
+      ht += '<div class="col-xs-3">昨日'+data.result.hit.preday+'</div>';
+      ht += '<div class="col-xs-3">本月'+data.result.hit.curmon+'</div>';
+      ht += '<div class="col-xs-3">累计'+data.result.hit.total+'</div>';
+    }else if(i==2){
+      ht += '<div class="col-xs-3">今日'+data.result.tu.curday+'</div>';
+      ht += '<div class="col-xs-3">昨日'+data.result.tu.preday+'</div>';
+      ht += '<div class="col-xs-3">本月'+data.result.tu.curmon+'</div>';
+      ht += '<div class="col-xs-3">累计'+data.result.tu.total+'</div>';
+    }else if(i==3){
+      ht += '<div class="col-xs-3">今日'+data.result.cang.curday+'</div>';
+      ht += '<div class="col-xs-3">昨日'+data.result.cang.preday+'</div>';
+      ht += '<div class="col-xs-3">本月'+data.result.cang.curmon+'</div>';
+      ht += '<div class="col-xs-3">累计'+data.result.cang.total+'</div>';
+    }
+
+    //if(i == 0)
+    {
+      ht += '<table class="table" id="monstat'+i+'">';
+      ht += '<tr><td><input id="input'+i+'" type="checkbox" onclick="selectallcheckbox('+i+')"/>&nbsp;日期</td><td>作品名</td>';
+      for(var k in data.result.pfinfos)
+      {
+        ht += '<td>'+data.result.pfinfos[k].pfname+'</td>';
+        option.series.push({'name':data.result.pfinfos[k].pfname,'type':'bar', 'stack':'one', 'data':[]});
+        option.legend.data.push(data.result.pfinfos[k].pfname);
+      }
+      ht += '<td>合计</td></tr>';
+      for(var j in data.result.sdinfos)
+      {
+        option.xAxis[0].data.push(j);
+        //option.series.push({'name':});
+        ht += '<tr><td><input type="checkbox" class="input'+i+'"/>&nbsp;&nbsp;<a href="javascript:;" onclick="getdaystatforctid(\''+j+'\','+data.result.ctinfo.ctid+','+i+');">'+j+'</a></td>';
+        ht += '<td>'+data.result.ctinfo.ctname+'</td>';
+        var total = 0;
+        for(var k in data.result.pfinfos)
+        {
+          var pfid = data.result.pfinfos[k].pfid;
+          var v = 0;
+          if(data.result.sdinfos[j][pfid])
+          {
+            var val = '';
+            if(i==0)
+              val = data.result.sdinfos[j][pfid].ctsdmonincome;
+            else if(i==1)
+              val = data.result.sdinfos[j][pfid].ctsdmonbrowsercount;
+            else if(i==2)
+              val = data.result.sdinfos[j][pfid].ctsdmontucaocount;
+            else if(i==3)
+              val = data.result.sdinfos[j][pfid].ctsdmoncollectcount;
+
+
+            if((val>0) || val.length > 0)
+            {
+              //ht += '<td>'+val+'</td>';
+              if(val.length > 0)
+              {
+                total += parseFloat(val.replace(',',''));
+                v = parseFloat(val.replace(',',''));
+              }
+              else
+              {
+                total += val;
+                v = val;
+              }
+              v = v.toFixed(2);
+              ht += '<td>'+v+'</td>';
+            }
+            else
+              ht += '<td>-</td>';
+          }
+          else
+            ht += '<td>-</td>';
+
+          option.series[k].data.push(v);
+        }
+        total = total.toFixed(2);
+        ht += '<td>'+total+'</td></tr>';
+      }
+      ht += '</table>';
+      ht += '<a class="btn btn-primary btn-sm" onclick="downdaystat('+i+')" style="width:90px">导出</a>';
+      //ht += '<table class="table" id="daystat'+i+'" style="display:none">';
+      //ht += '</table>';
+      options.push(option);
+    }
+
+    ht += '<div id="mainecharts'+i+'" style="height:400px;width:100%"></div>';
+	  ht += '</div>';
+  }
+  ht += '							</div>';
+  ht += '				</div>';
+
+  $('#editdetail').html(ht);
+  //$('#feedbackinfo').modal('show');
+
+  echartsoptions = options;
+  for(var i in options)
+  {
+    options[i].xAxis[0].data.reverse();
+    for(var j in options[i].series)
+    {
+      options[i].series[j].data.reverse();
+    }
+  }
+  for(var i in data.result.tabs)
+  //var i = 0;
+  {
+    var myChart = echarts.init(document.getElementById('mainecharts'+i));
+
+    // 为echarts对象加载数据
+    myChart.setOption(options[i]);
+
+    if(i > 0)
+      $('#homectid'+i).removeClass('active');
+  }
+
+}
+
+function changetab(i)
+{
+  return ;
+  var myChart = echarts.init(document.getElementById('mainecharts'+i));
+  // 为echarts对象加载数据
+  myChart.setOption(echartsoptions[i]);
+}
+
+function getdaystatforctid(mon,ctid,i)
+{
+  window.location.href='datamanageforctidday.html?ctid='+ctid+'&mon='+mon+'&i='+i;
+  return ;
+
+  var type = 'getdaystatbyctid';
+  <?php
+  $params = array('type','mon','ctid','i');
+  echo generate_ajax($params,'getdaystatforctidcb', '/action/cartoonaction.php');
+  ?>
+}
+
+function getdaystatforctidcb(data)
+{
+  var option = {tooltip:{show:true}, legend:{data:[]}, xAxis:[{type:'category',data:[]}],yAxis:[{type:'value'}],series:[] };
+  var i = data.result.i;
+  var ht = '<table class="table">';
+  ht += '<tr><td><input id="input'+i+'" type="checkbox" onclick="selectallcheckbox('+i+')"/>日期</td><td>作品名</td>';
+  for(var k in data.result.pfinfos)
+  {
+    ht += '<td>'+data.result.pfinfos[k].pfname+'</td>';
+    option.series.push({'name':data.result.pfinfos[k].pfname,'type':'bar', 'data':[]});
+    option.legend.data.push(data.result.pfinfos[k].pfname);
+  }
+  ht += '<td>合计</td></tr>';
+  for(var j in data.result.sdinfos)
+  {
+    ht += '<tr><td><input type="checkbox" class="input'+i+'"/>&nbsp;<a href="javascript:;" >'+j+'</a></td>';
+    ht += '<td>'+data.result.ctinfo.ctname+'</td>';
+    var total = 0;
+    option.xAxis[0].data.push(j);
+    for(var k in data.result.pfinfos)
+    {
+      var pfid = data.result.pfinfos[k].pfid;
+      var v = 0;
+      if(data.result.sdinfos[j][pfid])
+      {
+        var val = '';
+        if(i==0)
+          val = data.result.sdinfos[j][pfid].ctsddayincome;
+        else if(i==1)
+          val = data.result.sdinfos[j][pfid].ctsddaybrowsercount;
+        else if(i==2)
+          val = data.result.sdinfos[j][pfid].ctsddaytucaocount;
+        else if(i==3)
+          val = data.result.sdinfos[j][pfid].ctsddaycollectcount;
+
+        if((val>0) || val.length > 0)
+        {
+          ht += '<td>'+val+'</td>';
+          if(val.length > 0)
+          {
+            total += parseFloat(val.replace(',',''));
+            v = parseFloat(val.replace(',',''));
+          }
+          else
+          {
+            total += val;
+            v = val;
+          }
+        }
+        else
+          ht += '<td>-</td>';
+      }
+      else
+        ht += '<td>-</td>';
+      option.series[k].data.push(v);
+    }
+    total = total.tofixed(2);
+    ht += '<td>'+total+'</td></tr>';
+  }
+  ht += '</table>';
+  ht += '<a class="btn btn-primary btn-sm" onclick="downdaystat('+i+')" style="width:90px">导出</a>';
+  ht += '<div id="dayecharts" style="height:200px;width:100%"></div>';
+
+  //$('#daystat'+data.result.i).html(ht);
+  //$('#daystat'+data.result.i).show();
+  $('#editdetailctid').html(ht);
+  $('#feedbackinfo').modal('show');
+
+  setTimeout(function(){
+    var myChart = echarts.init(document.getElementById('dayecharts'));
+    // 为echarts对象加载数据
+    myChart.setOption(option);
+  },1000);
+}
+
+
+/* 查看 发布历史 */
+function getissueinfo(ctid)
+{
+  $('#browse').html('暂无');
+  $('#collect').html('暂无');
+  //$('#browse').html(ctid);
+  //$('#collect').html(ctid);
+  $('#feedbackinfo').modal('show');
+}
+
+
+var upfinfos = <?php echo json_encode($upfinfos);?>;
+
+function isEmptyObject(obj){
+  for(var key in obj){
+    return false
+  };
+  return true
+};
+
+function clickreleasetype(upfid)
+{
+  $('.upfid').attr('disabled', true);
+  $('.csfirstrelease').attr('disabled','true');
+  $('.csfirstrelease').each(function(){
+    this.checked = false;
+  });
+  $('.upfid').each(function(){
+    if(this.id == 'upfid'+upfid)
+      this.checked = true;
+    else
+      this.checked = false;
+  });
+}
+
+function clickfirstrelease(upfid)
+{
+  var count = 0;
+  $('.csfirstrelease').each(function(){
+    if(this.checked)
+    {
+      $('#upfid'+upfid)[0].checked = true;
+      ++count;
+    }
+  });
+  if(count > 2)
+  {
+    alert('首发最多两个平台，请重新选择');
+  }
+  if(count > 0)
+    $('#prevtr').show();
+  else
+    $('#prevtr').hide();
+}
+
+function clearfirst()
+{
+  $('.csreleasetype').each(function(){
+    this.checked = false;
+  });
+  $('.upfid').removeAttr('disabled');
+  $('.csfirstrelease').removeAttr('disabled');
+}
+
+function clicksection(obj)
+{
+  var dataid = $(obj).attr('data-id');
+  $('.sectionid').each(function(){
+    var did = $(this).attr('data-id');
+    if(obj.checked)
+    {
+      if(did <= dataid)
+        this.checked = true;
+      else
+        this.checked = false;
+    }
+    else
+    {
+      if(did > dataid)
+        this.checked = false;
+    }
+  });
+}
+
+
+function reopenrelease(ctrrid)
+{
+  var type = 'reopenrelease';
+  <?php
+  $params = array('type','ctrrid');
+  echo generate_ajax($params,'cb','/action/cartoonaction.php');
+  ?>
+}
+
+function cb(data)
+{
+  window.location.reload();
+}
+
+function selectallcheckbox(i)
+{
+  var selected = $('#input'+i).is(':checked');
+  if(selected)
+  {
+    $('.input'+i).each(function(){
+      this.checked = true;
+    });
+  }
+  else
+  {
+    $('.input'+i).each(function(){
+      this.checked = false;
+    });
+  }
+}
+
+function downdaystat(i)
+{
+  var mons = new Array();
+  $('.input'+i).each(function(){
+    if(this.checked)
+      mons.push($(this).next().html());
+  });
+
+  if(mons.length > 0)
+  {
+    $('#mons').val(JSON.stringify(mons));
+    downform.submit();
+  }
+  else
+  {
+    alert('请选择月份');
+  }
+}
+
+
+</script>
+<form method="post" id="downform" style="display:none" action="/action/cartoonaction.php">
+  <input type='hidden' id="type" name="type" value="downdaystatebyctid"/>
+  <input type='hidden' id="ctid" name="ctid" value="<?php echo $ctid?>" />
+  <input type='hidden' id="mons" name="mons" value="" />
+</form>
+</body>
+</html>

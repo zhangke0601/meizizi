@@ -1,0 +1,96 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../';
+require_once($base_dir.'model/clsUserinfos.php');
+
+$user = new Userinfos();
+$uinfo = $user->IsLogin();
+if($uinfo !== false)
+{
+  $utype = $uinfo['utype'];
+  if($utype == USERTYPE_MANHUASHI)
+    gotoUrl('/html/comic/index.html');
+  elseif($utype == USERTYPE_STUDIO)
+    gotoUrl('/html/studio/index.html');
+  elseif($uinfo['utype'] == USERTYPE_STUDIOMANAGE)
+  {
+    gotoUrl('/html/studio/index.html');
+  }
+  elseif($utype == USERTYPE_AUTH)
+    gotoUrl('/html/manager/index.html');
+  elseif($utype == 999)
+    gotoUrl('/super.html');
+  exit();
+}
+
+?>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+  <script src="/assets/js/jquery-1.10.2.min.js"></script>
+  <title>美滋滋漫画上传管理工具</title>
+</head>
+<body background="/assets/images/login_bg.jpg" style="background-repeat: no-repeat ;background-size: 100% 100%;background-attachment:fixed">
+  <div class="container">
+    <div class="center-block" style="margin-top:120px">
+      <div class="center-block" style="width:350px;background-color:white;box-shadow: 1px 1px 10px 1px rgba(0, 0, 0, 0.3);margin:0 auto;border-radius:5px">
+        <div style="padding:40px 30px 20px 30px;text-center">
+          <div class="text-center" style="margin-bottom:20px">
+            <img src="/assets/avatars/avatar1.png" style="width:62px;margin-bottom:5px"/><br>
+            <strong>美滋滋漫画上传管理工具</strong>
+          </div>
+          <input class="form-control" id="umobile" name="umobile" placeholder="手机号" style="margin-bottom:10px;width:290px"/>
+          <input class="form-control" id="upasswd" name="upasswd" placeholder="密码" type="password" style="width:290px"/>
+          <div style="height:30px;margin-top:5px">
+            <a style="float:right;color:#197dc3" href="html/user/findpwd.html">忘记密码？</a>
+          </div>
+          <div class="text-center" style="margin-top:30px">
+            <button class="btn btn-default btn-sm" style="width:290px;height:36px;background-color: #197dc3;color: white;border-radius: 6px;" onclick="login()">登录</button>
+          </div>
+          <div style="margin-top:40px;color:#323232;font-size:14px">
+            <a style="color:#323232" href="html/user/comicregister.html">漫画师注册</a>
+            <a style="float:right;color:#323232" href="html/user/studioregister.html">工作室注册</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+function login()
+{
+  var umobile = $('#umobile').val();
+  var upasswd = $('#upasswd').val();
+  if(umobile.length == 0)
+  {
+    alert('请输入手机号');
+    return;
+  }
+  if(upasswd.length == 0)
+  {
+    alert('请输入密码');
+    return ;
+  }
+  var type = 'login';
+  <?php
+    $params = array('type','umobile','upasswd');
+    echo generate_ajax($params,'logincb', '/action/useraction.php');
+  ?>
+}
+
+function logincb(data)
+{
+  window.location.reload();
+}
+
+$('#upasswd').bind('keyup', function(event) {
+  if (event.keyCode == "13") {
+    //回车执行查询
+    login();
+  }
+});
+
+</script>
+</body>
+</html>
+ 

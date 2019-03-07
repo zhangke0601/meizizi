@@ -1,0 +1,221 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+require_once($base_dir.'model/clsCartoonSectioninfos.php');
+require_once($base_dir.'model/clsThirduserinfos.php');
+$title = '第三方授权列表';
+$nav = 'thirduserauthlist';
+require_once($base_dir.'www/admin/html/manager/head.html');
+
+$p = GetItemFromArray($_GET,'p');
+$s = GetItemFromArray($_GET,'s');
+$tu = new Thirduserinfos();
+
+$p = intval($p);
+if($p < 1)
+  $p = 1;
+list($totalcount,$tuuinfos) = $tu->GetTuuinfos($p);
+foreach($tuuinfos as $idx=>$tuuinfo){
+  $u = $user->find($tuuinfo['uid']);
+  $tuuinfos[$idx]['uinfo'] = $u;
+  $tuinfo = $tu->find($tuuinfo['tuid']);
+  $tuuinfos[$idx]['tuinfo'] = $tuinfo;
+}
+$pagecount = ceil($totalcount/COUNTPERPAGE);
+?>
+
+<div class="container" style="background-color:white">
+  <div class="row" style="height:35px;display:none"> <!--style="display:none"-->
+    <form>
+      <input id="s" name="s" placeholder="输入公告标题查询" class="form-control" style="width:200px;float:left;margin-right:10px;display:none" value="<?php echo $s;?>"/>
+      <input type="submit" class="btn btn-default " value="查询" style="display:none">
+      <a class="btn btn-primary btn-sm pull-right" onclick="editthirduser(0);">增加用户</a>
+      <a class="btn btn-primary btn-sm pull-right" style="margin-right:40px" onclick="editqudaodesc();">设置渠道说明</a>
+    </form>
+  </div>
+
+  <div class="row">
+    <table class="table table-bordered">
+      <thead><td>用户</td><td>渠道名</td><td>授权类型</td><td>授权截止时间</td><td>操作</td><td>创建时间</td></thead>
+    <?php
+      foreach($tuuinfos as $info)
+      {
+           echo sprintf('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
+           $info['uinfo']['urealname'],$info['tuinfo']['tuname'],$info['tuuauthenddate'],
+           $tuauthstates[$info['tuustate']],
+           sprintf('<a href="javascript:;" onclick="viewcartooninfos(%d,%d)">查看授权作品</a>
+           <a href="javascript:;" onclick="opensetting(%d)" style="margin-left:10px">设置</a>
+           ', $info['tuid'],$info['uid'], $info['tuuid']),
+             $info['tuucreatetime']);
+      }
+    ?>
+    </table>
+    <div class="text-center">
+      <span class="text-center">
+        <?php echo get_view_for_page_index($p,$pagecount,'?p=%s');?>
+      </span>
+    </div>
+  </div>
+</div>
+    </div>
+  </div>
+  
+
+<div class="modal fade " id="authModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe2">渠道授权情况</h4>
+      </div>
+      <div class="modal-body" id="editdetai">
+        <input type='hidden' id="autuid" value="" />
+        <div class="row">
+          <div class="col-sm-12" style="">
+            <div style="overflow-y:auto;height:300px;#ddd;padding:5px" id="selectedct"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" >取消</button>
+        <button type="button" class="btn btn-primary btn-sm" data-dismiss="modal" >保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal fade " id="settingModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe2">设置</h4>
+      </div>
+      <div class="modal-body" id="editdetai">
+        <input type='hidden' id="tuuid" value="" />
+        <table class="table">
+          <tr><td>cpid</td><td><input id="tuucpid" name="tuucpid" class="form-control" /></td></tr>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" >取消</button>
+        <button type="button" class="btn btn-primary btn-sm"  onclick="savesetting();" >保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade " id="sectioneditModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe2">作品章节选择</h4>
+      </div>
+      <div class="modal-body" id="editdetai">
+        <input type='hidden' id="autuid" value="" />
+        <div class="row" id="secteditlist">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" >取消</button>
+        <button type="button" class="btn btn-primary btn-sm"  onclick="torighthand3();" >保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade " id="editqudaodescModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe2">渠道说明编辑</h4>
+      </div>
+      <div class="modal-body" id="editdetai">
+        <div class="row" id="secteditlist">
+          <textarea id="qudaodesc" class="form-control"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" >取消</button>
+        <button type="button" class="btn btn-primary btn-sm"  onclick="savequdaodesc();" >保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function emptyinfo()
+{
+  $('#tuid').val('');
+  $('#tuauthstate').val('0');
+  $('#tuaccesstoken').val('');
+}
+
+
+
+function savequdaodesc(){
+  var type = 'savequdaodesc';
+  var qudaodesc = $('#qudaodesc').val();
+  <?php
+    $params = array('type', 'qudaodesc');
+    echo generate_ajax($params,'cb','/action/funcaction.php');
+  ?>
+}
+
+function viewcartooninfos(tuid, uid){
+  var type = 'getcartooninfosforthirduser';
+  <?php
+  $params = array('type','tuid', 'uid');
+  echo generate_ajax($params,'getctinfosbythidcb','/action/funcaction.php');
+  ?>
+}
+
+function getctinfosbythidcb(data){
+  $('#key').val('');
+  $('#allct').html('');
+  $('#selectedct').html('');
+  for(var i in data.result){
+    var ht = '<div class="rightselected" data-type="'+data.result[i].tuctype+'" id="seltucid_'+data.result[i].tucid+'" onclick="selectright('+data.result[i].tucid+')">';
+    if(data.result[i].tuctype == 0)
+      ht += '自动&nbsp;';
+    else if(data.result[i].tuctype == 5)
+      ht += '手工&nbsp;';
+    ht += data.result[i].ctinfo.ctname;
+    ht += '</div>';
+    $('#selectedct').append(ht);
+  }
+  $('#authModal').modal('show');
+}
+
+function opensetting(tuuid){
+  $('#tuuid').val(tuuid);
+  var type = 'gettuusetting';
+  <?php
+  $params = array('type','tuuid');
+  echo generate_ajax($params,'gettuusettingcb','/action/funcaction.php');
+  ?>
+}
+
+function gettuusettingcb(data){
+  $('#tuucpid').val(data.result.tuucpid);
+  $('#settingModal').modal('show');
+}
+
+function savesetting(){
+  var tuuid = $('#tuuid').val();
+  var type = 'savetuusetting';
+  var tuucpid = $('#tuucpid').val();
+  <?php
+  $params = array('type','tuuid','tuucpid');
+  echo generate_ajax($params,'cb','/action/funcaction.php');
+  ?>
+}
+
+function cb(data){
+  window.location.reload();
+}
+</script>
+</body>
+</html>

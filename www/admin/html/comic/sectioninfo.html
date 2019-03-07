@@ -1,0 +1,628 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+require_once($base_dir.'model/clsCartoonSectioninfos.php');
+require_once($base_dir.'model/clsPlatforminfos.php');
+$nav = 'index';
+
+$title = '漫画章节编辑';
+$pf = new Platforminfos();
+$cart = new Cartooninfos();
+$sect = new CartoonSectioninfos();
+$ctid = intval(GetItemFromArray($_GET,'ctid'));
+$ctsid = intval(GetItemFromArray($_GET,'ctsid'));
+$ctinfo = $cart->find($ctid);
+$ctsinfo = $sect->find($ctsid);
+$type = 'addsectionforcartoon';
+if($ctsid > 0)
+$type = 'updatesectionforcartoon';
+$ctsstate = GetItemFromArray($ctsinfo, 'ctsstate');
+
+$carttypes = GetKeyAndValueFromArray($cart->GetTypeInfos(),'cttpid','cttpname');
+$carttags = GetKeyAndValueFromArray($cart->GetTagInfos(),'cttid','cttname');
+
+require_once($base_dir.'www/admin/html/comic/head.html');
+
+$pfinfos = $pf->getinfos('pfstate=0');
+$upfinfos = array();
+foreach($pfinfos as $idx=>$pfinfo)
+{
+  $upfinfo = $pf->existUserAndPlatform($uid,$pfinfo['pfid']);
+  if($upfinfo)
+  {
+    $upfinfo['pfinfo'] = $pfinfo;
+    $upfinfos[] = $upfinfo;
+  }
+}
+$upfinfos = SetKeyFromArray($upfinfos,'pfid');
+
+
+$platformcoversizeinfos = array(
+//array('pfid'=>1,'name'=>'掌阅','size'=>'600*800','width'=>'600','heigth'=>'800'),
+//array('pfid'=>2,'name'=>'快看','size'=>'430*570','width'=>'430','heigth'=>'570'),
+array('pfid'=>3,'name'=>'漫画岛','size'=>'750*422','width'=>'750','heigth'=>'422'),
+//array('pfid'=>4,'name'=>'布卡','size'=>'430*570','width'=>'','heigth'=>''),
+array('pfid'=>5,'name'=>'腾讯','size'=>'750*440','width'=>'750','heigth'=>'440'),
+//array('pfid'=>6,'name'=>'爱奇艺','size'=>'300*400','width'=>'300','heigth'=>'400'),
+//array('pfid'=>7,'name'=>'网易','size'=>'300*420','width'=>'300','heigth'=>'420'),
+//array('pfid'=>8,'name'=>'有妖气','size'=>'635*835','width'=>'635','heigth'=>'835')
+);
+
+$platforminfos = array(
+//array('pfid'=>1,'name'=>'掌阅'),
+//array('pfid'=>2,'name'=>'快看'),
+array('pfid'=>3,'name'=>'漫画岛'),
+array('pfid'=>5,'name'=>'腾讯'),
+//array('pfid'=>6,'name'=>'爱奇艺'),
+//array('pfid'=>7,'name'=>'网易'),
+//array('pfid'=>8,'name'=>'有妖气')
+);
+foreach($platformcoversizeinfos as $idx=>$row)
+{
+  if(!isset($upfinfos[$row['pfid']]))
+  {
+    unset($platformcoversizeinfos[$idx]);
+  }
+}
+$platformcoversizeinfos = array_values($platformcoversizeinfos);
+
+foreach($platforminfos as $idx=>$row)
+{
+  if(!isset($upfinfos[$row['pfid']]))
+  {
+    unset($platforminfos[$idx]);
+  }
+}
+$platforminfos = array_values($platforminfos);
+
+
+
+?>
+<style>
+  .form-control{background-color:#f4f4f4}
+  .table thead>tr>th, .table tbody>tr>th, .table tfoot>tr>th, .table thead>tr>td, .table tbody>tr>td, .table tfoot>tr>td{
+    border-top:0px
+  }
+  .lefttd{
+    text-align:right;
+    width:200px
+  }
+  .form-control{border-radius:5px; }
+  .px{
+    float: right;
+    margin-top: -24px;
+    margin-right: -7px;
+    color: red;
+  }
+</style>
+<div class="container">
+  <div class="row" style="border-bottom:1px solid #f4f4f4">
+    <div style="line-height:60px;font-size:22px"><?php echo $ctinfo['ctname'];?>&nbsp;&nbsp;<small>编辑漫画章节</small></div>
+  </div>
+  <form id="submit">
+    <input type='hidden' id="type" name="type" value="<?php echo $type;?>"/>
+    <input type='hidden' id="ctid" name="ctid" value="<?php echo $ctid;?>"/>
+    <input type='hidden' id="ctsid" name="ctsid" value="<?php echo $ctsid;?>"/>
+    <input type="hidden" id="ctsplatformcoverinfos" name="ctsplatformcoverinfos" value="<?php echo GetItemFromArray($ctsinfo,'ctsplatformcoverinfos');?>"/>
+
+    <div class="row " align="center" style=";margin-left:50px;margin-right:50px;margin-top:20px">
+      <table class="table">
+        <tr><td class="lefttd">章节名称:</td><td><input id="ctsname" name="ctsname" class="form-control easyui-validatebox " value="<?php echo GetItemFromArray($ctsinfo,'ctsname');?>" placeholder='请输入作品章节名称' /><p class="px">*</p></td></tr>
+        <tr><td  class="lefttd">章节排序:</td><td><input id="ctssort" name="ctssort" class="form-control" value="<?php echo GetItemFromArray($ctsinfo,'ctssort');?>" placeholder='请输入作品章节排序' /><p class="px">*</p></td></tr>
+        <tr><td  class="lefttd">显示状态:</td><td style="text-align:left"><label><input type="radio" id="ctsstate0" name="ctsstate" value="0" <?php if(empty($ctsstate)) {echo 'checked';} ?> />&nbsp;禁用</label>&nbsp;&nbsp;&nbsp;&nbsp;
+          <label><input type="radio" id="ctsstate40" name="ctsstate" value="40" <?php if(GetItemFromArray($ctsinfo,'ctsstate')==STATE_ONLINE) echo 'checked';?> />&nbsp;启用</label></td></tr>
+        <input type="file" id="cover" style="display:none" onchange="uploadimage(this);"/>
+        <tr><td  class="lefttd">章节封面:</td><td><div style="width:140px;height:182px;text-align:center;background-color:#f4f4f4" onclick="$('#cover').trigger('click');">
+          <input type="hidden" id="ctscover" name="ctscover" value="<?php echo GetItemFromArray($ctsinfo,'ctscover');?>"/>
+          <?php if(strlen(GetItemFromArray($ctsinfo,'ctscover'))==0) { ?>
+          <div id="coverdiv" style="padding-top:50px"><img src="/assets/images/button_add.png" style="margin-bottom:10px"/><br>添加封面</div>
+          <img id="coverimg" src="" style="display:none;width:140px;height:182px"/>
+          <?php } else {?>
+          <img id="coverimg" src="<?php echo GetItemFromArray($ctsinfo,'ctscover');?>" style="width:140px;height:182px"/>
+          <?php } ?>
+          </div><span id="covertip"></span>
+          <a class="btn btn-default btn-sm" onclick="cutcover();">封面截取</a>
+          <span style="color:gray">注：如上传漫画岛和腾讯，请截图封面</span>
+        </td></tr>
+        <tr><td  class="lefttd">内容图片:</td><td>
+          <div style="height:50px;background-color:#f4f4f4">
+            <input id="ctscontent" name="ctscontent" type='hidden' value='<?php echo $ctsinfo['ctscontent'];?>'/>
+            <input type="file" id="sectionimg" onchange="uploadimage(this)" style="display:none"  multiple="multiple" />
+            <img src="/assets/images/button_add.png" style="width:30px;margin:10px 10px" onclick="addsectionimg();"/>
+            <a class="btn btn-primary btn-sm" onclick="preview();">预览</a>
+            <span id="tip"></span>
+            <div style="float:right;margin:15px 20px">
+              <label style="margin-right:5px"><input type="checkbox" onclick="allclick(this);" />&nbsp;全选</label>
+              <i class="icon-trash" style="font-size:20px" onclick="deleteselected();"></i>
+            </div>
+          </div>
+          <div class="row" id="sectionlist" style="height:400px;border:1px solid #f4f4f4;">
+            <?php
+              $ctscontent = GetItemFromArray($ctsinfo,'ctscontent');
+              $imgs = array();
+              if(strlen($ctscontent) > 0)
+            {
+            $imgs = json_decode($ctscontent, true);
+            foreach($imgs as $idx=>$img)
+            {
+            echo sprintf('<div class="col-md-2" style="float:left;text-align:center;"><img src="%s" style="width:100px;height:150px;display:block" id="imgid%d" class="imgid" /><div style="overflow: hidden;text-overflow: ellipsis;white-space: nowrap;">%s</div><input id="imginput%d" type="checkbox" class="imginput" value="%s" /></div>', $img['imgurl'], $idx,$img['filename'],$idx, $idx);
+            }
+            }
+            ?>
+          </div>
+        </td></tr>
+        <tr><td></td><td style="text-align:center" colspan=2>
+          <a href="sectionlist.html?ctid=<?php echo $ctid;?>" style="width:100px" class="btn btn-default">取消</a>
+          <a style="width:100px;margin-left:20px" class="btn btn-primary btn-sm" onclick="return submit();">确定</a></td></tr>
+      </table>
+    </div>
+  </form>
+</div>
+
+<div id="outerdiv" style="position:fixed;top:0;left:0;background:rgba(0,0,0,0.7);z-index:2;width:100%;height:100%;display:none;">
+    <div id="innerdiv" style="position:absolute;">
+        <img id="bigimg" style="border:5px solid #fff;" src="" />
+    </div>
+</div>
+
+<!-- 预览 -->
+<div class="modal fade bs-example-modal-lg" id="ctsModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">章节预览</h4>
+            </div>
+            <div class="modal-body" style="text-align:center"  id='ctsimgcontent'>
+                <div >
+                    <img id="ctsimgurl" style="width: 500px;height: 300px;">
+                </div>
+                <a onclick="lastpage()" >上一页</a>
+                <a onclick="nextpage()" >下一页</a>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade bs-example-modal-lg" id="coverinfos" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" data-backdrop="static" data-keyboard="false" >
+  <div class="modal-dialog modal-lg" role="document" style="width: 900px;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="">章节封面截取</h4>
+      </div>
+      <div class="modal-body" >
+        <div class="row" style="margin-top:10px;margin-bottom:10px">
+          <ul class="clear tab_ul">
+            <?php
+            foreach($platformcoversizeinfos as $pformvsinfo)
+            {
+              echo sprintf('<li  class="floatl light-blue">
+            <a style="background-color:white;color:gray;" class="color" id="verticalcolor%d" onclick="showcontainer(%d,%s,%s)">%s(%s)</a></li>',
+            $pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['width'],$pformvsinfo['heigth'],$pformvsinfo['name'],$pformvsinfo['size']);
+            }
+            ?>
+          </ul>
+          <?php
+            foreach($platformcoversizeinfos as $pformvsinfo)
+            {
+              echo sprintf(' <div class="platform" id="platform%d" style=" display: none;margin-top:30px;" >
+                  <img src="%s" id="platformverticalimg%d" class="platformverticalimg" style="width:100%%">
+                  </div>
+        <input type="hidden" id="%dvertical" class="vertical">
+        <div><img id="base64%d" style="display: none" class="base64"></div>
+        <input id="cutout%d" class="cutout" onclick="cutout(%d,%d,%d)" value="截取图片并上传" type="button" style="display: none;">',
+        $pformvsinfo['pfid'],$ctsinfo['ctscover'],$pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['width'],
+        $pformvsinfo['heigth'],$pformvsinfo['pfid'],$pformvsinfo['pfid']);
+        }
+        ?>
+        </div>
+      </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+    </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+var pfids = <?php echo json_encode(GetItemsFromArray($platforminfos,'pfid'));?>;
+var imgcount = <?php echo count($imgs)?>;
+var uploadimgcount = 0;
+var curimgid;
+var curimgindex = 0;
+var curuploading = false;
+/*  function uploadimage(obj)
+  {
+    var id = obj.id;
+    var fd = new FormData();
+    fd.append("image", document.getElementById(id).files[0]);
+    fd.append("type", "uploadimage");
+    fd.append("subtype", 'cartoon');
+    fd.append("objid", id);
+    var xhr = new XMLHttpRequest();
+    xhr.upload.addEventListener("progress", uploadProgress, false);
+    xhr.addEventListener("load", uploadComplete, false);
+    xhr.addEventListener("error", uploadFailed, false);
+    xhr.addEventListener("abort", uploadCanceled, false);
+    xhr.open("POST", "/action/funcaction.php");
+    xhr.send(fd);
+
+  }*/
+
+function uploadimage(obj)
+{
+  var id = obj.id;
+  if(id == 'cover')
+  {
+    uploadoneimageex(document.getElementById(id).files[0], id);
+  }
+  else
+  {
+    curimgindex = 0;
+    uploadimgcount = document.getElementById(id).files.length;
+    $('#tip').html('0/'+uploadimgcount);
+    curimgindex = 0;
+    curimgid = id;
+    setInterval('uploadmultiimage();',1000);
+  }
+  //var fd = new FormData();
+  /*fd.append("image", document.getElementById(id).files[0]);
+  fd.append("type", "uploadimage");
+  fd.append("subtype", 'cartoon');
+  fd.append("objid", id);
+  var xhr = new XMLHttpRequest();
+  xhr.upload.addEventListener("progress", uploadProgress, false);
+  xhr.addEventListener("load", uploadComplete, false);
+  xhr.addEventListener("error", uploadFailed, false);
+  xhr.addEventListener("abort", uploadCanceled, false);
+  xhr.open("POST", "/action/funcaction.php");
+  xhr.send(fd);*/
+}
+
+function uploadmultiimage()
+{
+  if(!curuploading && curimgindex<uploadimgcount)
+  {
+    $('#tip').html((curimgindex+1)+'/'+uploadimgcount);
+    uploadoneimage(document.getElementById(curimgid).files[curimgindex] , curimgid);
+  }
+  if(curimgindex >= uploadimgcount)
+  {
+    $('#tip').html('完成');
+    $('#sectionimg').val('');
+  }
+    
+}
+
+function uploadoneimage(file,id)
+{
+  curuploading = true;
+  var fd = new FormData();
+  fd.append("image", file);
+  fd.append("type", "uploadimage");
+  fd.append("subtype", 'cartoon');
+  fd.append("objid", id);
+  var xhr = new XMLHttpRequest();
+  xhr.upload.addEventListener("progress", uploadProgress, false);
+  xhr.addEventListener("load", uploadComplete, false);
+  xhr.addEventListener("error", uploadFailed, false);
+  xhr.addEventListener("abort", uploadCanceled, false);
+  xhr.open("POST", "/action/funcaction.php");
+  xhr.send(fd);
+}
+
+  function uploadProgress(evt) {
+    console.log(evt);
+    var val = evt.loaded*100/evt.total;
+    val = val.toFixed(0);
+    $('#tip').html((curimgindex+1)+'/'+uploadimgcount+'('+val+'%)');
+  }
+  function uploadComplete(evt) {
+    /* This event is raised when the server send back a response */
+    var data = eval('('+evt.target.responseText+')');
+    if(data.retno == 0)
+    {
+      if(data.objid == 'cover')
+      {
+        $('#'+data.objid+'div').hide();
+        $('#cts'+data.objid).val(data.result.url);
+        $('#'+data.objid+'img').attr('src',data.result.url);
+        $('#'+data.objid+'img').show();
+        $('#covertip').html('完成');
+        curuploading = false;
+      }
+      else
+      {
+        var sectstr = $('#ctscontent').val();
+        var ctscontent = new Array();
+
+        if(sectstr.length > 0)
+        {
+          ctscontent = JSON.parse(sectstr);
+          //ctscontent = sectstr.split(",");
+        }
+        var str = {"imgurl":data.result.url,'filename':data.result.filename};
+        ctscontent .push(str);
+
+        $('#ctscontent').val(JSON.stringify(ctscontent));
+        var ht = '<div class="col-md-2" style="float:left;text-align:center;margin:5px"><img src="'+data.result.url+'" style="width:100px;height:150px;display:block" id="imgid'+imgcount+'" /><div style="overflow: hidden;text-overflow: ellipsis;white-space: nowrap;">'+data.result.filename+'</div><input id="imginput'+imgcount+'" type="checkbox" class="imginput" value="'+imgcount+'" /></div>';
+        $('#sectionlist').append(ht);
+        curuploading = false;
+        ++curimgindex;
+        ++imgcount;
+      }
+      //alert('成功上传');
+    }
+    else
+    {
+      alert(data.msg);
+    }
+  }
+  function uploadFailed(evt){alert("There was an error attempting to upload the file.");}
+  function uploadCanceled(evt){alert("The upload has been canceled.");}
+
+function uploadoneimageex(file,id)
+{
+  curuploading = true;
+  var fd = new FormData();
+  fd.append("image", file);
+  fd.append("type", "uploadimage");
+  fd.append("subtype", 'cartoon');
+  fd.append("objid", id);
+  var xhr = new XMLHttpRequest();
+  xhr.upload.addEventListener("progress", uploadProgressex, false);
+  xhr.addEventListener("load", uploadComplete, false);
+  xhr.addEventListener("error", uploadFailed, false);
+  xhr.addEventListener("abort", uploadCanceled, false);
+  xhr.open("POST", "/action/funcaction.php");
+  xhr.send(fd);
+}
+
+function uploadProgressex(evt) {
+  var val = evt.loaded*100/evt.total;
+  val = val.toFixed(0);
+  $('#covertip').html(val+'%');
+}
+ 
+  function submit()
+  {
+    if(curuploading)
+    {
+      alert('正在上传，请稍后重试');
+      return ;
+    }
+
+    var sectstr = $('#ctscontent').val();
+    var ctsname = $('#ctsname').val();
+    var ctsstate = $("input[name='ctsstate']:checked").val();
+  $('#ctsplatformcoverinfos').val(JSON.stringify(platformcoverinfos));
+    if(checkitemnull(ctsname,'章节名称') )
+    {
+      if(ctsstate == undefined)
+      {
+        alert('选择显示状态'); return;
+      }
+      if(sectstr.length > 0)
+      {
+        //var str = '['+sectstr+']';
+        //$('#ctscontent').val(str);
+        <?php
+      $params = '$("#submit").serialize()';
+      echo generate_ajax($params,'sectioninfocb','/action/cartoonaction.php');
+    ?>
+
+    return false;
+  }
+  else
+      alert('请上传图片');
+  }
+
+}
+  /*  */
+  function checkitemnull(str, viewstr)
+  {
+    if((str!=null) && (str.length>0))
+      return true;
+    else
+    {
+      alert(viewstr+"为空");
+      return false;
+    }
+  }
+  function sectioninfocb()
+  {
+    alert('保存成功');
+    window.location.href="sectionlist.html?ctid=<?php echo $ctid;?>";
+  }
+</script>
+  <script>
+function allclick(obj)
+{
+  if(obj.checked)
+  {
+    //$('.imginput').attr('checked','checked');
+    $('.imginput').each(function(){
+      this.checked = true;
+    });
+  }
+  else
+  {
+    $('.imginput').removeAttr('checked');
+  }
+}
+
+function deleteselected()
+{
+  if(confirm('确认删除？'))
+  {
+    var ctscontent = new Array();
+    $('.imginput').each(function(){
+      if(this.checked)
+      {
+        $(this).parent().remove();
+      }
+      else
+      {
+        var imgurl = $('#imgid'+this.value).attr('src');
+        ctscontent.push({'imgurl':imgurl});
+      }
+    });
+    $('#ctscontent').val(JSON.stringify(ctscontent));
+  }
+}
+
+function preview()
+{
+  var ctscontent = $('#ctscontent').val();
+  if(ctscontent.length > 0)
+  {
+    var imgs = JSON.parse(ctscontent);
+
+    var ht = '';
+    for(var i in imgs)
+    {
+      ht += '<img src="'+imgs[i]['imgurl']+'" style="width:100%;margin-bottom:00px">';
+      //ht += '<hr>';
+    }
+    $('#ctsimgcontent').html(ht);
+    $('#ctsModal').modal('show');
+  }
+  else
+  {
+    alert('没有图片。无法预览哦');
+  }
+}
+
+function addsectionimg()
+{
+  if((uploadimgcount>0) && (curimgindex < uploadimgcount))
+  {
+    alert('上一次没有上传完成，请上传完成以后再提交');
+  }
+  else
+  {
+    $('#sectionimg').trigger('click');
+  }
+}
+
+function cutcover()
+{
+  /*for(var i in pfids)
+  {
+    $('#platform'+pfids[i]).hide();
+    $img = $('#platformverticalimg'+pfids[i]);
+    $img.cropper('clear');
+    $img.cropper('reset');
+    $img.cropper('destroy');
+  }*/
+
+  $('#coverinfos').modal('show');
+}
+  </script>
+<link  href="/assets/js/cropper.css" rel="stylesheet">
+<script src="/assets/js/cropper.js"></script>
+  <script>
+function showcontainer(id,width,heigth)
+  {
+    $img = $('#platformverticalimg'+id);
+    $('.color').css('color','gray');
+    $('#verticalcolor'+id).css('color','red');
+    $('.platform').hide();
+    $('#platform'+id).show();
+    //var $img = $('#platformverticalimg'+id);
+
+    $('.cutout').hide();
+    $('#cutout'+id).show();
+    $('.uplodimg').hide();
+    $('#uplodimg'+id).show();
+    $('.base64').hide();
+    $('.base64').html('');
+    $('.vertical').val('');
+    /*  1500*880 */
+    $img.cropper({
+      aspectRatio: width/heigth,
+      cropBoxResizable :false, /*  设置裁剪框不可改变大小 /*/
+      crop: function(data) {
+        // Output the result data for cropping image.
+      }
+    });
+  }
+
+  function getsizecontain(width,height)
+  {
+    var base;
+    var quality = 1;
+    var base64 = $img.cropper('getCroppedCanvas',{width:width,height:height});
+    while(true){
+      base = base64.toDataURL('image/jpeg', quality);
+      if(base.length*3/4 > 150*1024)
+      {
+        quality -= 0.05;
+      }
+      else
+      {
+        break;
+      }
+      if(quality < 0.1)
+        break;
+    }
+    return base;
+  }
+  /* 获取截取的图片信息 */
+  function cutout(id,width,heigth)
+  {
+    var base64 = $img.cropper('getCroppedCanvas',{width:width,height:heigth});
+    var base = base64.toDataURL('image/png');
+    if(id == 3)
+    {
+      base = getsizecontain(width,heigth);
+    }
+    //alert(base);
+    $('#base64'+id).html(base64);
+    //$('#base64'+id).show();
+    var image = base;
+    var obj = id;
+    $('#'+id+'vertical').val(base);
+    var type = 'uploadbase64image';
+    <?php
+      $params = array('type','image','obj');
+      echo generate_ajax($params,'tishi','/action/funcaction.php');
+      ?>
+  }
+  /* 上传图片 */
+  function uplodimg(obj)
+  {
+    var image = $('#'+obj+'vertical').val();
+    var type = 'uploadbase64image';
+    if(checkitemnull(image,'上传图片'))
+    {
+      <?php
+      $params = array('type','image','obj');
+      echo generate_ajax($params,'tishi','/action/funcaction.php');
+      ?>
+    }
+  }
+
+var platformcoverinfos = <?php echo isset($ctsinfo['ctsplatformcoverinfos'])?$ctsinfo['ctsplatformcoverinfos']:'{}';?>;
+
+  function tishi(data)
+  {
+    var id = data.obj;
+    var imgurl = data.imageurl;
+    platformcoverinfos[id] = {};
+    platformcoverinfos[id]['verticalimg'] = imgurl;
+    $('#base64'+id).attr('src',imgurl);
+    $('#base64'+id).show();
+    alert('上传成功');
+
+  }
+ 
+  </script>
+
+</body>
+</html>

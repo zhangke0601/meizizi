@@ -1,0 +1,154 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+require_once($base_dir.'model/clsPlatforminfos.php');
+$title = '漫画是列表';
+$nav = 'comic';
+require_once($base_dir.'www/admin/html/manager/head.html');
+
+$p = GetItemFromArray($_GET,'p');
+$s = GetItemFromArray($_GET,'s');
+list($totalcount,$comiclist) = $user->GetComicInfosByParams($s,$p);
+$pagecount = ceil($totalcount/COUNT_PER_PAGE);
+?>
+
+<div class="container" style="background-color:white">
+  <div class="row" style="height:50px;padding-top:10px">
+    <form>
+      <input id="s" name="s" placeholder="输入漫画师姓名或手机号查询" class="form-control" style="width:250px;float:left;margin-right:10px" value="<?php echo $s;?>"/>
+    <button class="btn btn-default ">查询</button>
+    <form>
+  </div>
+  <div class="row">
+    <table class="table table-bordered">
+      <thead><td>ID</td><td>漫画师姓名</td><td>手机号</td><td>启用状态</td><td style="display:none">作者简介</td><td style="display:none">作者公告</td><td style="display:none">排序</td><td>登录日志</td><td>添加时间</td><td>操作</td></thead>
+    <?php
+      foreach($comiclist as $info)
+      {
+        echo sprintf('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td style="display:none">%s</td><td style="display:none">%s</td><td style="display:none">%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
+           $info['uid'], $info['urealname'],$info['umobile'],
+           $austates[$info['ustate']], 
+           sprintf('<a href="javascript:void(0)" onclick="viewdesc(%d);">查看详情</a>', $info['uid']),
+           sprintf('<a href="javascript:void(0)" onclick="viewgonggao(%d);">查看详情</a>', $info['uid']),
+           $info['usort'],
+           sprintf('<a href="javascript:void(0)" onclick="viewlogin(%d);">查看详情</a>', $info['uid']), $info['ucreatetime'],
+           sprintf('<a href="javascript:void(0)" style="margin-right:20px" onclick="setstate(%d)">%s</a><a href="javascript:void(0)" onclick="deletecomic(%d)">删除</a>', $info['uid'], ($info['ustate']==STATE_NOR)?'锁定':'启动', $info['uid']));
+      }
+
+    ?>
+    </table>
+    <div class="text-center">
+      <span class="text-center">
+        <?php echo get_view_for_page_index($p,$pagecount,'?p=%s');?>
+      </span>
+    </div>
+  </div>
+</div>
+    </div>
+  </div>
+<!--/*{{{ EditView */-->
+<div class="modal fade bs-example-modal-lg" id="editModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabel" style="color:white">登录日志</h4>
+      </div>
+      <div class="modal-body" id="editdetail">
+        <form id="form">
+        <input id="cttid" name="cttid" type="hidden"/>
+        <input id="type" name="type" class="submittype" type="hidden"/>
+        <div id="loginlist">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+        <button id="submitbtn" type="button" class="btn btn-primary btn-sm" onclick="submiteditinfo();">确定</button>
+      </div>
+      </form>
+    </div>
+  </div>
+</div>
+<!--/*}}}*/-->
+<script>
+var uinfos = <?php echo json_encode($comiclist);?>;
+
+function viewdesc(uid)
+{
+  var ht = '';
+  for(var i in uinfos)
+  {
+    if(uinfos[i].uid == uid)
+    {
+      ht = uinfos[i].udesc;
+      break;
+    }
+  }
+  if(ht.length == 0)
+    ht = '空';
+  $('#loginlist').html(ht);
+  $('#editModal').modal('show');
+}
+
+function viewgonggao(uid)
+{
+  var ht = '';
+  for(var i in uinfos)
+  {
+    if(uinfos[i].uid == uid)
+    {
+      ht = uinfos[i].unotice;
+      break;
+    }
+  }
+  if(ht.length == 0)
+    ht = '空';
+  $('#loginlist').html(ht);
+  $('#editModal').modal('show');
+}
+function viewlogin(uid)
+{
+  var type = 'getloginstatbyuid';
+  <?php
+    $params = array('type','uid');
+    echo generate_ajax($params,'getloginstatbyuidcb', '/action/useraction.php');
+  ?>
+}
+
+function getloginstatbyuidcb(data)
+{
+  var ht = '<table class="table table-bordered" id="loginlist">';
+  ht += '<thead><td>最近一次登录时间</td><td>最近一周登录次数</td><td>最近一月登陆次数</td><td>最近一年登陆次数</td></thead>';
+  ht += '<tr><td>'+data.result.lasttime+'</td><td>'+data.result.weektimes+'</td><td>'+data.result.monthtimes+'</td><td>'+data.result.yeartimes+'</td></tr>';
+  ht += '</table>';
+  $('#loginlist').html(ht);
+  $('#editModal').modal('show');
+}
+
+function setstate(uid)
+{
+  var type = 'setuserstate';
+  <?php
+    $params = array('type','uid');
+    echo generate_ajax($params,'deletecb','/action/useraction.php');
+  ?>
+}
+
+function deletecomic(uid)
+{
+  if(confirm('确实要删除？'))
+  {
+    var type = 'deletecomicinfo';
+    <?php
+    $params = array('type','uid');
+    echo generate_ajax($params,'deletecb','/action/useraction.php');
+    ?>
+  }
+}
+function deletecb(data)
+{
+  window.location.reload();
+}
+</script>
+</body>
+</html>

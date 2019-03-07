@@ -1,0 +1,66 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+$title = '漫画列表';
+$nav = 'cartoon';
+require_once($base_dir.'www/admin/html/manager/head.html');
+
+$p = GetItemFromArray($_GET,'p');
+$s = GetItemFromArray($_GET,'s');
+$t = GetItemFromArray($_GET,'t');
+$search = GetItemFromArray($_GET,'search');
+
+$cart = new Cartooninfos();
+$p = intval($p);
+if($p < 1)
+  $p = 1;
+list($totalcount,$cartinfos) = $cart->GetSelfInfosByParams($s, $p, $search);
+$pagecount = ceil($totalcount/COUNT_PER_PAGE);
+?>
+
+<div class="container" style="background-color:white">
+  <div class="row" style="height:50px;padding-top:10px">
+    <form>
+      <input id="search" name="search" placeholder="输入漫画名称查询" class="form-control" style="width:200px;float:left;margin-right:10px" value="<?php echo $search;?>"/>
+    <button class="btn btn-default ">查询</button>
+    <span style="text-align:center;margin-left:270px">共 <font style="color:red"><?php echo $totalcount;?></font> 条记录</span>
+    <a style="display:none" class="btn btn-primary btn-sm pull-right" href="cartooninfo.html" >新增漫画作品</a>
+    </form>
+  </div>
+  <div class="row">
+    <table class="table table-bordered">
+      <thead><td>ID</td><td>名称</td><td>作者</td><td>状态</td><td>来源</td><td>操作</td></thead>
+    <?php
+      foreach($cartinfos as $cartinfo)
+      {
+           echo sprintf('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>', $cartinfo['ctid'],$cartinfo['ctname'],
+          $cartinfo['ctauthorname'],$ctstates[$cartinfo['ctstate']],$typesources[$cartinfo['cttype']],
+          sprintf('<a href="sectionlist.html?ctid=%d">章节管理</a><a href="cartooninfo.html?ctid=%d" style="margin-left:20px">编辑</a>', $cartinfo['ctid'], $cartinfo['ctid']));
+      }
+    ?>
+    </table>
+    <div class="text-center">
+      <span class="text-center">
+        <?php echo get_view_for_page_index($p,$pagecount,'?p=%s');?>
+      </span>
+    </div>
+  </div>
+</div>
+    </div>
+  </div>
+<script>
+function deletecart(ctid)
+{
+  var type = 'deletecarton';
+  <?php
+    $params = array('type','ctid');
+    echo generate_ajax($params,'deletecb','/action/cartoonaction.php');
+  ?>
+}
+function deletecb(data)
+{
+  window.location.reload();
+}
+</script>
+</body>
+</html>

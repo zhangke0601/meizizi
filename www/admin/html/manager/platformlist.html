@@ -1,0 +1,220 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+require_once($base_dir.'model/clsPlatforminfos.php');
+$title = '平台列表';
+$nav = 'platform';
+require_once($base_dir.'www/admin/html/manager/head.html');
+
+$s = GetItemFromArray($_GET,'s');
+
+$cart = new Cartooninfos();
+$pf = new Platforminfos();
+$pfinfos = $pf->GetAllPlatformInfos($s);
+?>
+<style>
+.lefttd{text-align:right}
+</style>
+<div class="container" style="background-color:white">
+  <div class="row" style="height:50px;padding-top:10px">
+    <form>
+      <input id="s" name="s" placeholder="输入漫画发布平台名称查询" class="form-control" style="width:200px;float:left;margin-right:10px" value="<?php echo $s;?>"/>
+    <button class="btn btn-default ">查询</button>
+    <a class="btn btn-primary btn-sm pull-right" href="javascript:void(0)" onclick="editpf('');">新增平台</a>
+    </form>
+  </div>
+  <div class="row">
+    <table class="table table-bordered">
+      <thead><td>ID</td><td>漫画发布平台名称</td><td>启用状态</td><td>上传地址</td><td>上传账号详情</td><td>排序</td><td>添加时间</td><td>操作</td></thead>
+    <?php
+      foreach($pfinfos as $info)
+      {
+        echo sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", 
+           $info['pfid'], $info['pfname'],
+           $pfstates[$info['pfstate']],$info['pfuploadurl'],
+           sprintf("<a href=\"javascript:void(0)\" onclick=\"viewaccount('%s','%s','%s')\">查看详情</a>",$info['pfname'], $info['pfusername'], $info['pfpassword']),
+           $info['pfsort'], $info['pfcreatetime'],
+           sprintf('<a href="javascript:void(0)" onclick="editpf(%d)">编辑</a><a style="margin-left:20px" href="javascript:void(0)" onclick="deletepf(%d);">删除</a>', $info['pfid'], $info['pfid'])
+        );
+      }
+    ?>
+    </table>
+  </div>
+</div>
+    </div>
+  </div>
+<!--/*{{{ EditView */-->
+<div class="modal fade bs-example-modal-lg" id="editModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabel">漫画发布平台账号管理</h4>
+      </div>
+      <div class="modal-body" id="editdetail">
+        <form id="form">
+        <input id="pfid" name="pfid" type="hidden"/>
+        <input id="type" name="type" class="submittype" type="hidden"/>
+        <table class="table table-bordered">
+          <tr><td class="lefttd" style="vertical-align:middle">漫画平台发布名称</td><td><input id="pfname" name="pfname" class="form-control" placeholder="漫画平台发布名称"/></td></tr>
+          <tr><td class="lefttd" style="vertical-align:middle">启用状态</td>
+            <td>
+              <label><input id="pfstate0" type="radio" name="pfstate" value="<?php echo STATE_NOR;?>"> 显示</label>&nbsp;&nbsp;&nbsp;&nbsp;
+              <label><input id="pfstate<?php echo STATE_OFFLINE;?>" type="radio" name="pfstate" value="<?php echo STATE_OFFLINE;?>"> 禁用</label>
+            </td></tr>
+          <tr><td class="lefttd" style="vertical-align:middle">排序</td><td>
+            <input id="pfsort" name="pfsort" class="form-control" placeholder="填写排序数字" />
+          </td></tr>
+          <tr><td class="lefttd" style="vertical-align:middle">平台上传地址</td><td>
+            <input id="pfuploadurl" name="pfuploadurl" class="form-control" placeholder="填写平台上传地址，以http或https开头" />
+          </td></tr>
+          <tr><td class="lefttd" style="vertical-align:middle">平台账号</td><td>
+            <input id="pfusername" name="pfusername" class="form-control" placeholder="填写平台账号" />
+          </td></tr>
+          <tr><td class="lefttd" style="vertical-align:middle">平台密码</td><td>
+              <input id="pfpassword" name="pfpassword" class="form-control" placeholder="填写平台密码" style="width:200px;display:initial;margin-right:20px" /><a style="display:none" id="testid" class="btn btn-primary btn-sm" onclick="testforaccount();">测试账号</a>
+          </td></tr>
+          <tr><td class="lefttd" style="vertical-align:middle">说明</td><td>
+              <textarea  id="pfdesc" name="pfdesc" class="form-control" style="float:left;margin-right:20px" placeholder="填写说明"></textarea>
+          </td></tr>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+        <button id="submitbtn" type="button" class="btn btn-primary btn-sm" onclick="submiteditinfo();">确定</button>
+      </div>
+      </form>
+    </div>
+  </div>
+</div>
+<!--/*}}}*/-->
+<!--/*{{{ EditView */-->
+<div class="modal fade bs-example-modal-lg" id="viewModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myViewLabel"></h4>
+      </div>
+      <div class="modal-body text-center" id="viewdetail">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+        <button id="submitbtn" type="button" class="btn btn-primary btn-sm" data-dismiss="modal">确定</button>
+      </div>
+      </form>
+    </div>
+  </div>
+</div>
+<!--/*}}}*/-->
+<script>
+function emptymodalinfo()
+{
+  $('#pfid').val('');
+  $('#pfname').val('');
+  $("input:radio[name=pfstate]").removeAttr('checked');
+  $('#pfuploadurl').val('');
+  $('#pfusername').val('');
+  $('#pfpassword').val('');
+  $('#pfsort').val('');
+  $('#pfdesc').val('');
+}
+function editpf(pfid)
+{
+  emptymodalinfo();
+  if(pfid > 0)
+  {
+    $('#testid').show();
+    var type = 'getplatforminfobypfid';
+    <?php
+      $params = array('type','pfid');
+      echo generate_ajax($params,'getplatforminfobycttidcb','/action/platformaction.php');
+    ?>
+  }
+  else
+  {
+    $('#testid').hide();
+    $('#editModal').modal('show');
+  }
+}
+
+function getplatforminfobycttidcb(data)
+{
+  $('#editModal').modal('show');
+  $('#pfid').val(data.result.pfid);
+  $('#pfname').val(data.result.pfname);
+  $("input:radio[name=pfstate]").removeAttr('checked');
+  $('#pfstate'+data.result.pfstate).attr('checked','checked');
+  $('#pfsort').val(data.result.pfsort);
+  $('#pfuploadurl').val(data.result.pfuploadurl);
+  $('#pfusername').val(data.result.pfusername);
+  $('#pfpassword').val(data.result.pfpassword);
+  $('#pfdesc').val(data.result.pfdesc);
+}
+
+function submiteditinfo()
+{
+  var pfid = $('#pfid').val();
+  var type = 'addplatforminfo';
+  if(pfid > 0)
+    type = 'updateplatforminfo';
+  $('.submittype').val(type);
+
+  var pfuploadurl = $('#pfuploadurl').val();
+  if(isUrl(pfuploadurl))
+  {
+    <?php
+    $params = '$("#form").serialize()';
+    echo generate_ajax($params, 'deletecb', '/action/platformaction.php');
+    ?>
+  }
+  else
+  {
+    alert('上传地址无效');
+  }
+  return false;
+}
+
+function viewaccount(n,u,p)
+{
+  $('#viewModal').modal('show');
+  $('#myViewLabel').html(n+'漫画平台');
+  $('#viewdetail').html('<div>账号：'+u+'</div><div>密码：'+p+'</div>');
+}
+
+function deletepf(pfid)
+{
+  if(confirm('确认删除？'))
+  {
+    var type = 'deleteplatform';
+    <?php
+      $params = array('type','pfid');
+    echo generate_ajax($params,'deletecb','/action/platformaction.php');
+    ?>
+  }
+}
+function deletecb(data)
+{
+  window.location.reload();
+}
+
+function testforaccount()
+{
+  var pfid = $('#pfid').val();
+  var pfusername = $('#pfusername').val();
+  var pfpassword = $('#pfpassword').val();
+
+  var type = 'testforaccount';
+  <?php
+    $params = array('type','pfid','pfusername','pfpassword');
+  echo generate_ajax($params,'cb','/action/platformaction.php');
+  ?>
+}
+
+function isUrl(str){ 
+  var reg = /^https?:\/\/([\w-]+\.)+[\w-]+(\/[\w-.\/?%&=]*)?$/; 
+  return reg.test(str); 
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,523 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+$nav = 'cartoon';
+
+$title = '漫画作品编辑';
+$cart = new Cartooninfos();
+$ctid = intval(GetItemFromArray($_GET,'ctid'));
+$ctinfo = $cart->find($ctid);
+$type = 'addcartooninfo';
+if($ctid > 0)
+  $type = 'updatecartooninfo';
+$ctstate = GetItemFromArray($ctinfo, 'ctstate');
+
+$carttypes = GetKeyAndValueFromArray($cart->GetTypeInfos(),'cttpid','cttpname');
+$carttags = GetKeyAndValueFromArray($cart->GetTagInfos(),'cttid','cttname');
+
+require_once($base_dir.'www/admin/html/manager/head.html');
+$platformverticalsizeinfos = array(
+array('pfid'=>1,'name'=>'掌阅','size'=>'600*800','width'=>'600','heigth'=>'800'),
+array('pfid'=>2,'name'=>'快看','size'=>'430*570','width'=>'430','heigth'=>'570'),
+//array('pfid'=>3,'name'=>'漫画岛','size'=>'430*570','width'=>'','heigth'=>''),
+//array('pfid'=>4,'name'=>'布卡','size'=>'430*570','width'=>'','heigth'=>''),
+array('pfid'=>5,'name'=>'腾讯','size'=>'630*840','width'=>'630','heigth'=>'840'),
+array('pfid'=>6,'name'=>'爱奇艺','size'=>'300*400','width'=>'300','heigth'=>'400'),
+array('pfid'=>7,'name'=>'网易','size'=>'300*420','width'=>'300','heigth'=>'420'),
+array('pfid'=>8,'name'=>'有妖气','size'=>'635*835','width'=>'635','heigth'=>'835')
+);
+$platformhorizontalsizeinfos = array(
+array('pfid'=>2,'name'=>'快看','size'=>'1280*800','width'=>'1280','heigth'=>'800'),
+array('pfid'=>5,'name'=>'腾讯','size'=>'1500*880','width'=>'1500','heigth'=>'880'),
+array('pfid'=>7,'name'=>'网易','size'=>'640*360','width'=>'640','heigth'=>'360'),
+array('pfid'=>8,'name'=>'有妖气','size'=>'1235*775','width'=>'1235','heigth'=>'775')
+);
+$platforminfos = array(
+array('pfid'=>1,'name'=>'掌阅'),
+array('pfid'=>2,'name'=>'快看'),
+array('pfid'=>5,'name'=>'腾讯'),
+array('pfid'=>6,'name'=>'爱奇艺'),
+array('pfid'=>7,'name'=>'网易'),
+array('pfid'=>8,'name'=>'有妖气')
+);
+if($ctid>0)
+{
+$ccpinfos = $cart->getinfos(sprintf('ctid=%d and ccpstate=%d',$ctid,STATE_NOR),'cartooncoverandplatforminfos','','all');
+if(!empty($ccpinfos))
+$ccpinfos = SetKeyFromArray($ccpinfos,'pfid');
+}
+?>
+<style>
+.form-control{background-color:#f4f4f4}
+.table thead>tr>th, .table tbody>tr>th, .table tfoot>tr>th, .table thead>tr>td, .table tbody>tr>td, .table tfoot>tr>td{
+  border-top:0px
+}
+.lefttd{
+  text-align:right;
+}
+.form-control{border-radius:5px; }
+.yj{
+  border-radius:5px;width: 100%;
+}
+ul{
+  list-style: none;
+}
+.floatl{
+  float: left;
+  margin-right:15px;
+}
+</style>
+<link  href="/assets/js/cropper.css" rel="stylesheet">
+<script src="/assets/js/cropper.js"></script>
+<div class="container">
+  <div class="row" style="border-bottom:1px solid #f4f4f4;height:50px">
+    <div style="line-height:60px;font-size:22px"><?php if($ctinfo){ echo "修改";}else{echo "增加";} ?>漫画作品</div>
+  </div>
+  <form id="submit">
+    <input type='hidden' id="type" name="type" value="<?php echo $type;?>"/>
+    <input type='hidden' id="ctid" name="ctid" value="<?php echo $ctid;?>"/>
+    <input type='hidden' id="platformverticalinfos" name="platformverticalinfos" />
+    <input type='hidden' id="platformhorizontalinfos" name="platformhorizontalinfos" />
+  <!--<div class="row" style="border-bottom:1px solid #f4f4f4;height:50px">
+    <div style="line-height:40px;font-size:16px">作品信息</div>
+  </div>-->
+
+    <div class="row " align="center" style=";margin-left:50px;margin-right:50px;margin-top:20px">
+      <table class="table" style="width:350px;">
+        <tr><td class="lefttd">作品名称:</td><td width="200px"><input id="ctname" name="ctname" class="form-control" value="<?php echo GetItemFromArray($ctinfo,'ctname');?>" placeholder='请输入作品名称' /></td></tr>
+        <tr><td  class="lefttd">显示状态:</td><td style="text-align:left"><label><input type="radio" id="ctstate0" name="ctstate" value="0" <?php if(empty($ctstate)) {echo 'checked';} ?> />&nbsp;禁用</label>&nbsp;&nbsp;&nbsp;&nbsp;
+          <label><input type="radio" id="ctstate40" name="ctstate" value="40" <?php if(GetItemFromArray($ctinfo,'ctstate')==STATE_ONLINE) echo 'checked';?> />&nbsp;启用</label></td></tr>
+        <tr><td  class="lefttd">作品类型:</td><td><select class="yj" id="cttype1" name="cttype1"><?php echo OutputSelectOption($carttypes,GetItemFromArray($ctinfo,'cttype1'),'选择作品类型1');?></select></td></tr>
+        <tr><td  class="lefttd">作品类型:</td><td><select class="yj" id="cttype2" name="cttype2"><?php echo OutputSelectOption($carttypes,GetItemFromArray($ctinfo,'cttype2'),'选择作品类型2');?></select></td></tr>
+        <tr><td  class="lefttd">作品进程:</td><td><select class="yj" id="ctprogress" name="ctprogress"><?php echo OutputSelectOption($progresses,GetItemFromArray($ctinfo,'ctprogress'),'选择作品进程');?></select></td></tr>
+        <tr><td  class="lefttd">首发状态:</td><td><select class="yj" multiple id="ctfirstrelease" name="ctfirstrelease"><?php echo OutputSelectOption($releases,GetItemFromArray($ctinfo,'ctfirstrelease'),'选择首发状态可多选');?></select></td></tr>
+        <tr><td  class="lefttd">授权状态:</td><td><select class="yj" id="ctauthstate" name="ctauthstate"><?php echo OutputSelectOption($authstates,GetItemFromArray($ctinfo,'ctauthstate'),'选择授权状态');?></select></td></tr>
+        <tr><td  class="lefttd">漫画载体:</td><td><select class="yj" id="ctvector" name="ctvector"><?php echo OutputSelectOption($manvectors,GetItemFromArray($ctinfo,'ctvector'),'选择漫画载体');?></select></td></tr>
+        <tr><td  class="lefttd">用户群:</td><td><select class="yj" id="ctusergroup" name="ctusergroup"><?php echo OutputSelectOption($usergroupes,GetItemFromArray($ctinfo,'ctusergroup'),'选择用户群');?></select></td></tr>
+        <tr><td  class="lefttd">内容标签:</td><td><select class="yj" multiple id="cttags" name="cttags"><?php echo OutputSelectOption($carttags,GetItemFromArray($ctinfo,'cttags'),'选择内容标签可多选');?></select></td></tr>
+        <tr><td  class="lefttd">作品简介:</td>
+          <td>
+          <textarea id="ctdesc" name="ctdesc" style="width: 100%;" class="yj">
+            <?php echo GetItemFromArray($ctinfo,'ctdesc');?>
+          </textarea>
+          </td>
+        </tr>
+
+        <tr><td  class="lefttd">作者姓名:</td><td><input id="ctauthorname" name="ctauthorname" class="form-control" placeholder="请输入漫画师姓名" value="<?php echo GetItemFromArray($ctinfo,'ctauthorname');?>"/></td></tr>
+        <tr><td  class="lefttd">图片作者:</td><td><input id="ctimageauthor" name="ctimageauthor" class="form-control" placeholder="请输入图作者"  value="<?php echo GetItemFromArray($ctinfo,'ctimageauthor');?>"/></td></tr>
+        <tr><td  class="lefttd">文作者:</td><td><input id="cttextauthor" name="cttextauthor" class="form-control" placeholder="请输入文作者" value="<?php echo GetItemFromArray($ctinfo,'cttextauthor');?>"/></td></tr>
+        <tr><td  class="lefttd">作者公告:</td>
+          <td>
+           <textarea id="ctnotice" name="ctnotice" style="width: 100%;">
+            <?php echo GetItemFromArray($ctinfo,'ctnotice');?>
+          </textarea>
+            <!--<input  class="form-control" placeholder="作者公告" value="<?php echo GetItemFromArray($ctinfo,'ctnotice');?>" />-->
+          </td>
+        </tr>
+        <tr><td  class="lefttd">真实姓名:</td><td><input id="ctrealname" name="ctrealname" class="form-control" placeholder="真实姓名" value="<?php echo GetItemFromArray($ctinfo,'ctrealname');?>"/></td></tr>
+        <tr><td  class="lefttd">身份证号:</td><td><input id="ctidcardnum" name="ctidcardnum" class="form-control" placeholder="身份证号" value="<?php echo GetItemFromArray($ctinfo,'ctidcardnum');?>" /></td></tr>
+        <tr><td  class="lefttd">联系方式:</td><td><input id="ctcontact" name="ctcontact" class="form-control" placeholder="联系方式" value="<?php echo GetItemFromArray($ctinfo,'ctcontact');?>"/></td></tr>
+
+        <input type="file" id="vertical" style="display:none" onchange="uploadimage(this);"/>
+        <tr><td  class="lefttd">竖版封面:</td><td><div style="width:140px;height:182px;text-align:center;background-color:#f4f4f4" onclick="$('#vertical').trigger('click');">
+          <input type="hidden" id="ctverticalimage" name="ctverticalimage" value="<?php echo GetItemFromArray($ctinfo,'ctverticalimage');?>"/>
+          <?php if(strlen(GetItemFromArray($ctinfo,'ctverticalimage'))==0) { ?>
+          <div id="verticaldiv" style="padding-top:50px"><img src="/assets/images/button_add.png" style="margin-bottom:10px"/><br>添加竖版封面</div>
+          <img id="verticalimg" src="" style="display:none;width:140px;height:182px"/>
+          <?php } else {?>
+          <img id="verticalimg" src="<?php echo GetItemFromArray($ctinfo,'ctverticalimage');?>" style="width:140px;height:182px"/>
+          <?php } ?>
+        </div></td></tr>
+        <input type="file" id="horizontal" style="display:none" onchange="uploadimage(this);"/>
+        <tr><td  class="lefttd">横版封面:</td><td><div style="width:249px;height:182px;text-align:center;background-color:#f4f4f4" onclick="$('#horizontal').trigger('click');">
+          <input type="hidden" id="cthorizontalimage" name="cthorizontalimage" value="<?php echo GetItemFromArray($ctinfo,'cthorizontalimage')?>"/>
+          <?php if(strlen(GetItemFromArray($ctinfo,'cthorizontalimage'))==0) { ?>
+          <div id="horizontaldiv" style="padding-top:50px"><img src="/assets/images/button_add.png" style="margin-bottom:10px"/><br>添加横版封面</div>
+          <img id="horizontalimg" src="" style="display:none;width:249px;height:182px"/>
+          <?php } else { ?>
+          <img id="horizontalimg" src="<?php echo GetItemFromArray($ctinfo,'cthorizontalimage');?>" style="width:249px;height:182px"/>
+          <?php } ?>
+        </div></td></tr>
+        <tr><td style="text-align:left" colspan=2>
+          <a href="index.html" style="width:100px" class="btn btn-default">取消</a>
+          <a style="width:100px;margin-left:20px" class="btn btn-primary btn-sm" onclick="return submit();">确定</a></td></tr>
+      </table>
+  </div>
+  <!--<div class="row" style="border-bottom:1px solid #f4f4f4">
+    <div style="line-height:40px;font-size:16px">作者信息</div>
+  </div>
+  <div class="row" style=";margin-left:50px;margin-right:50px;margin-top:20px">
+    <table class="table">
+      <tr><td><input id="ctauthorname" name="ctauthorname" class="form-control" placeholder="请输入漫画师姓名" value="<?php echo GetItemFromArray($ctinfo,'ctauthorname');?>"/></td></tr>
+      <tr><td><input id="ctimageauthor" name="ctimageauthor" class="form-control" placeholder="请输入图作者"  value="<?php echo GetItemFromArray($ctinfo,'ctimageauthor');?>"/></td></tr>
+      <tr><td><input id="cttextauthor" name="cttextauthor" class="form-control" placeholder="请输入文作者" value="<?php echo GetItemFromArray($ctinfo,'cttextauthor');?>"/></td></tr>
+      <tr><td><input id="ctnotice" name="ctnotice" class="form-control" placeholder="作者公告" value="<?php echo GetItemFromArray($ctinfo,'ctnotice');?>" /></td></tr>
+      <tr><td><input id="ctrealname" name="ctrealname" class="form-control" placeholder="真实姓名" value="<?php echo GetItemFromArray($ctinfo,'ctrealname');?>"/></td></tr>
+      <tr><td><input id="ctidcardnum" name="ctidcardnum" class="form-control" placeholder="身份证号" value="<?php echo GetItemFromArray($ctinfo,'ctidcardnum');?>" /></td></tr>
+      <tr><td><input id="ctcontact" name="ctcontact" class="form-control" placeholder="联系方式" value="<?php echo GetItemFromArray($ctinfo,'ctcontact');?>"/></td></tr>
+    </table>
+  </div>
+  <div class="row" style="border-bottom:1px solid #f4f4f4">
+    <div style="line-height:40px;font-size:16px">图片信息</div>
+  </div>
+  <div class="row" style=";margin-left:50px;margin-right:50px;margin-top:20px">
+    <table class="table">
+            <input type="file" id="vertical" style="display:none" onchange="uploadimage(this);"/>
+      <tr><td><div style="width:140px;height:182px;text-align:center;background-color:#f4f4f4" onclick="$('#vertical').trigger('click');">
+            <input type="hidden" id="ctverticalimage" name="ctverticalimage" value="<?php echo GetItemFromArray($ctinfo,'ctverticalimage');?>"/>
+            <?php if(strlen(GetItemFromArray($ctinfo,'ctverticalimage'))==0) { ?>
+            <div id="verticaldiv" style="padding-top:50px"><img src="/assets/images/button_add.png" style="margin-bottom:10px"/><br>添加竖版封面</div>
+            <img id="verticalimg" src="" style="display:none;width:140px;height:182px"/>
+            <?php } else {?>
+            <img id="verticalimg" src="<?php echo GetItemFromArray($ctinfo,'ctverticalimage');?>" style="width:140px;height:182px"/>
+            <?php } ?>
+          </div></td></tr>
+            <input type="file" id="horizontal" style="display:none" onchange="uploadimage(this);"/>
+      <tr><td><div style="width:249px;height:182px;text-align:center;background-color:#f4f4f4" onclick="$('#horizontal').trigger('click');">
+            <input type="hidden" id="cthorizontalimage" name="cthorizontalimage" value="<?php echo GetItemFromArray($ctinfo,'cthorizontalimage')?>"/>
+            <?php if(strlen(GetItemFromArray($ctinfo,'cthorizontalimage'))==0) { ?>
+            <div id="horizontaldiv" style="padding-top:50px"><img src="/assets/images/button_add.png" style="margin-bottom:10px"/><br>添加竖版封面</div>
+            <img id="horizontalimg" src="" style="display:none;width:249px;height:182px"/>
+            <?php } else { ?>
+            <img id="horizontalimg" src="<?php echo GetItemFromArray($ctinfo,'cthorizontalimage');?>" style="width:249px;height:182px"/>
+            <?php } ?>
+          </div></td></tr>
+      <tr><td style="text-align:left" colspan=2>
+          <a href="index.html" style="width:100px" class="btn btn-default">取消</a>
+          <a style="width:100px;margin-left:20px" class="btn btn-primary btn-sm" onclick="return submit();">确定</a></td></tr>
+    </table>
+  </div>-->
+  </form>
+</div>
+<!-- 展示横版封面截图 -->
+<div class="modal fade bs-example-modal-lg" id="horizontalinfos" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog modal-lg" role="document" style="width: 1000px;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe2">横版封面截图</h4>
+      </div>
+      <div class="modal-body" id="editdetai">
+        <div class="row" style="margin-top:10px;margin-bottom:10px">
+          <ul class="clear tab_ul">
+            <?php
+            foreach($platformhorizontalsizeinfos as $pformvsinfo)
+            {
+              echo sprintf('<li  class="floatl light-blue">
+            <a style="background-color:white;color:gray;" class="color" id="horizontalclolor%d" onclick="showhorizontalcontainer(%d,%s,%s)">%s(%s)</a></li>',
+            $pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['width'],$pformvsinfo['heigth'],$pformvsinfo['name'],$pformvsinfo['size']);
+            }
+            ?>
+          </ul>
+          <?php
+            foreach($platformhorizontalsizeinfos as $pformvsinfo)
+            {
+             echo sprintf(' <div class="horizontalplatform" id="horizontalplatform%d" style="width: 1000px; display: none;margin-top:30px;" >
+          <img  id="platformhorizontalimg%d" class="platformhorizontalimg">
+        </div>
+        <input type="hidden" id="%dhorizontal" class="horizontal">
+        <img id="horizontalbase64%d" style="display: none" class="horizontalbase64">
+        <input id="horizontalcutout%d" class="horizontalcutout" onclick="horizontalcutout(%d,%d,%d)" value="截取图片并上传" type="button" style="display: none;">
+        ',
+        $pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['width'],
+        $pformvsinfo['heigth'],$pformvsinfo['pfid'],$pformvsinfo['pfid']);
+        }
+        ?>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+    </div>
+  </div>
+</div>
+</div>
+<!-- 展示竖版封面截图 -->
+<div class="modal fade bs-example-modal-lg" id="verticalinfos" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog modal-lg" role="document" style="width: 1100px;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="">平台竖版封面截取</h4>
+      </div>
+      <div class="modal-body" >
+        <div class="row" style="margin-top:10px;margin-bottom:10px">
+          <ul class="clear tab_ul">
+            <?php
+            foreach($platformverticalsizeinfos as $pformvsinfo)
+            {
+              echo sprintf('<li  class="floatl light-blue">
+            <a style="background-color:white;color:gray;" class="color" id="verticalcolor%d" onclick="showcontainer(%d,%s,%s)">%s(%s)</a></li>',
+            $pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['width'],$pformvsinfo['heigth'],$pformvsinfo['name'],$pformvsinfo['size']);
+            }
+            ?>
+          </ul>
+          <?php
+            foreach($platformverticalsizeinfos as $pformvsinfo)
+            {
+              echo sprintf(' <div class="platform" id="platform%d" style="width: 1000px; display: none;margin-top:30px;" >
+          <img src="" id="platformverticalimg%d" class="platformverticalimg">
+        </div>
+        <input type="hidden" id="%dvertical" class="vertical">
+        <img id="base64%d" style="display: none" class="base64">
+        <input id="cutout%d" class="cutout" onclick="cutout(%d,%d,%d)" value="截取并上传" type="button" style="display: none;">',
+        $pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['width'],
+        $pformvsinfo['heigth'],$pformvsinfo['pfid'],$pformvsinfo['pfid']);
+        }
+        ?>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+    </div>
+  </div>
+</div>
+</div>
+
+
+<!-- 展示平台封面图片展示 -->
+<div class="modal fade bs-example-modal-lg" id="platformimginfos" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog modal-lg" role="document" style="width: 1100px;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" >平台封面图片展示</h4>
+      </div>
+
+      <div class="row" style="margin-top:10px;margin-bottom:10px">
+        <ul class="clear tab_ul">
+          <?php
+            foreach($platforminfos as $platforminfo)
+            {
+              echo sprintf('<li  class="floatl light-blue"><a style="background-color:white;color:gray;" onclick="showplatforminfos(%d)">%s</a></li>',
+          $platforminfo['pfid'],$platforminfo['name']);
+          }
+          ?>
+        </ul>
+      </div>
+      <?php
+          foreach($platforminfos as $platforminfo)
+            {
+            $horizontalimg = '暂无';
+            $verticalimg = '暂无';
+            if(isset($ccpinfos[$platforminfo['pfid']]))
+            {
+              if(strlen($ccpinfos[$platforminfo['pfid']]['ccpverticalimg']))
+                $verticalimg = sprintf('<img src="%s">',$ccpinfos[$platforminfo['pfid']]['ccpverticalimg']);
+      if(strlen($ccpinfos[$platforminfo['pfid']]['ccphorizontalimg']))
+      $horizontalimg = sprintf('<img src="%s">',$ccpinfos[$platforminfo['pfid']]['ccphorizontalimg']);
+
+      }
+      echo sprintf('<div id="platformimg%d" class="platformimg" style="display:none;" >
+      <div>
+        <p>横版封面</p>
+        %s
+      </div>
+      <div>
+        <p>竖版封面</p>
+        %s
+      </div>
+    </div> ',
+      $platforminfo['pfid'],$horizontalimg,$verticalimg);
+      }
+      ?>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+
+<script>
+  function showplatformimginfo()
+  {
+    $('#platformimginfos').modal('show');
+  }
+  function showplatforminfos(pfid)
+  {
+    $('.platformimg').hide();
+    $('#platformimg'+pfid).show();
+  }
+  //var $img = $('#platformverticalimg');
+  function showcontainer(id,width,heigth)
+  {
+    $img = $('#platformverticalimg'+id);
+    $('.color').css('color','gray');
+    $('#verticalcolor'+id).css('color','red');
+    $('.platform').hide();
+    $('#platform'+id).show();
+    //var $img = $('#platformverticalimg'+id);
+
+    $('.cutout').hide();
+    $('#cutout'+id).show();
+    $('.uplodimg').hide();
+    $('#uplodimg'+id).show();
+    $('.base64').hide();
+    $('.base64').html('');
+    $('.vertical').val('');
+    /*  1500*880 */
+    $img.cropper({
+      aspectRatio: width/heigth,
+      cropBoxResizable :false, /*  设置裁剪框不可改变大小 /*/
+      crop: function(data) {
+        // Output the result data for cropping image.
+      }
+    });
+  }
+
+  /* 获取截取的图片信息 */
+  function cutout(id,width,heigth)
+  {
+    var base64 = $img.cropper('getCroppedCanvas',{width:width,heigth:heigth});
+    var base = base64.toDataURL('image/jpeg');
+    //alert(base);
+    $('#base64'+id).html(base64);
+    $('#base64'+id).show();
+    var image = base;
+    var obj = id;
+    $('#'+id+'vertical').val(base);
+    var type = 'uploadbase64image';
+    <?php
+  $params = array('type','image','obj');
+      echo generate_ajax($params,'tishi','/action/funcaction.php');
+      ?>
+  }
+  function tishi(data)
+  {
+    var id = data.obj;
+    var imgurl = data.imageurl;
+    platformverticalinfos[id] = {};
+    platformverticalinfos[id]['verticalimg'] = imgurl;
+    $('#base64'+id).attr('src',imgurl);
+    alert('上传成功');
+
+  }
+
+  function showhorizontalcontainer(id,width,heigth)
+  {
+    $horizontalimg = $('#platformhorizontalimg'+id);/*
+   $horizontalimg.cropper('clear');
+   $horizontalimg.cropper('reset');
+   $horizontalimg.cropper('destroy');*/
+    $('.color').css('color','gray');
+    $('#horizontalclolor'+id).css('color','red');
+    alert($('#platformhorizontalimg'+id)[0].src);
+    $('.horizontalplatform').hide();
+    $('#horizontalplatform'+id).show();
+    //var $img = $('#platformverticalimg'+id);
+    $('.horizontalcutout').hide();
+    $('#horizontalcutout'+id).show();
+    $('.horizontaluplodimg').hide();
+    $('#horizontaluplodimg'+id).show();
+    $('.horizontalbase64').hide();
+    $('.horizontalbase64').html('');
+    $('.horizontal').val('');
+    $horizontalimg.cropper({
+      aspectRatio: width/heigth,
+      cropBoxResizable :false, /*  设置裁剪框不可改变大小 /*/
+      crop: function(data) {
+        // Output the result data for cropping image.
+      }
+    });
+  }
+
+
+  /* 获取截取的图片信息 */
+  function horizontalcutout(id,width,heigth)
+  {
+    var base64 = $horizontalimg.cropper('getCroppedCanvas',{width:width,heigth:heigth});
+    var base = base64.toDataURL('image/jpeg');
+    //$('#horizontalbase64'+id).html(base64);
+    $('#horizontalbase64'+id).show();
+    $('#'+id+'horizontal').val(base);
+    var image = base;
+    var type = 'uploadbase64image';
+    var obj = id;
+    <?php
+  $params = array('type','image','obj');
+          echo generate_ajax($params,'horizontaltishi','/action/funcaction.php');
+    ?>
+  }
+  function horizontaltishi(data)
+  {
+    var id = data.obj;
+    var imgurl = data.imageurl;
+    platformhorizontalinfos[id] = {};
+    platformhorizontalinfos[id]['horizontalimg'] = imgurl;
+    $('#horizontalbase64'+id).attr('src',imgurl);
+    alert('上传成功');
+  }
+
+
+
+  function uploadimage(obj)
+{
+  var id = obj.id;
+  var fd = new FormData();
+  fd.append("image", document.getElementById(id).files[0]);
+  fd.append("type", "uploadimage");
+  fd.append("subtype", 'cartoon');
+  fd.append("objid", id);
+  var xhr = new XMLHttpRequest();
+  xhr.upload.addEventListener("progress", uploadProgress, false);
+  xhr.addEventListener("load", uploadComplete, false);
+  xhr.addEventListener("error", uploadFailed, false);
+  xhr.addEventListener("abort", uploadCanceled, false);
+  xhr.open("POST", "/action/funcaction.php");
+  xhr.send(fd);
+
+}
+
+function uploadProgress(evt) {}
+function uploadComplete(evt) {
+  /* This event is raised when the server send back a response */
+  var data = eval('('+evt.target.responseText+')');
+  if(data.retno == 0)
+  {
+    $('#'+data.objid+'div').hide();
+    $('#ct'+data.objid+'image').val(data.result);
+    $('#'+data.objid+'img').attr('src',data.result);
+    $('#'+data.objid+'img').show();
+    alert('成功上传');
+    if(data.objid == 'vertical')
+    {
+      platformverticalinfos = {};
+      $('#verticalinfos').modal('show');
+      $('.platformverticalimg').attr('src',data.result);
+    }
+    else if( data.objid == 'horizontal')
+    {
+      platformhorizontalinfos = {};
+      $('#horizontalinfos').modal('show');
+      $('.platformhorizontalimg').attr('src',data.result);
+
+    }
+  }
+  else
+  {
+    alert(data.msg);
+  }
+}
+function uploadFailed(evt){alert("There was an error attempting to upload the file.");}
+function uploadCanceled(evt){alert("The upload has been canceled.");}
+
+
+function submit()
+{
+  <?php
+    $params = '$("#submit").serialize()';
+    echo generate_ajax($params,'cartinfocb','/action/cartoonaction.php');
+  ?>
+
+  return false;
+}
+
+function cartinfocb()
+{
+  alert('保存成功');
+  window.location.href="index.html";
+}
+</script>
+</body>
+</html>

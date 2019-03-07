@@ -1,0 +1,35 @@
+PHP Notice:  Undefined index: 67 in /home/search/meizizi/inc/util_for_simulate.php on line 1168
+PHP Notice:  Undefined index:  in /home/search/meizizi/inc/util_for_simulate.php on line 1168
+PHP Notice:  Undefined index: 58 in /home/search/meizizi/inc/util_for_simulate.php on line 1169
+PHP Notice:  Undefined index:  in /home/search/meizizi/inc/util_for_simulate.php on line 1169
+PHP Notice:  Uninitialized string offset: 6 in /home/search/meizizi/inc/util_for_simulate.php on line 1176
+PHP Notice:  Undefined index:  in /home/search/meizizi/inc/util_for_simulate.php on line 1176
+PHP Notice:  Uninitialized string offset: 6 in /home/search/meizizi/inc/util_for_simulate.php on line 1176
+PHP Notice:  Undefined index:  in /home/search/meizizi/inc/util_for_simulate.php on line 1176
+PHP Notice:  Uninitialized string offset: 6 in /home/search/meizizi/inc/util_for_simulate.php on line 1176
+PHP Notice:  Undefined index:  in /home/search/meizizi/inc/util_for_simulate.php on line 1176
+PHP Notice:  Uninitialized string offset: 6 in /home/search/meizizi/inc/util_for_simulate.php on line 1176
+PHP Notice:  Undefined index:  in /home/search/meizizi/inc/util_for_simulate.php on line 1176
+PHP Notice:  Uninitialized string offset: 6 in /home/search/meizizi/inc/util_for_simulate.php on line 1176
+PHP Notice:  Undefined index:  in /home/search/meizizi/inc/util_for_simulate.php on line 1176
+PHP Notice:  Undefined index: 67 in /home/search/meizizi/inc/util_for_simulate.php on line 996
+PHP Notice:  Undefined index:  in /home/search/meizizi/inc/util_for_simulate.php on line 996
+PHP Notice:  Undefined index: 58 in /home/search/meizizi/inc/util_for_simulate.php on line 997
+PHP Notice:  Undefined index:  in /home/search/meizizi/inc/util_for_simulate.php on line 997
+PHP Notice:  Undefined index: cttpdesc in /home/search/meizizi/inc/util_for_simulate.php on line 1001
+PHP Notice:  Undefined index: cttpdesc in /home/search/meizizi/inc/util_for_simulate.php on line 1001
+PHP Notice:  Undefined index: cttpdesc in /home/search/meizizi/inc/util_for_simulate.php on line 1001
+PHP Notice:  Undefined index: cttpdesc in /home/search/meizizi/inc/util_for_simulate.php on line 1001
+PHP Notice:  Undefined index: cttpdesc in /home/search/meizizi/inc/util_for_simulate.php on line 1001
+PHP Notice:  Undefined index: cttpdesc in /home/search/meizizi/inc/util_for_simulate.php on line 1001
+PHP Notice:  Undefined index: cttpdesc in /home/search/meizizi/inc/util_for_simulate.php on line 1001
+PHP Notice:  Undefined index: file in /home/search/meizizi/inc/util_for_simulate.php on line 1022
+PHP Notice:  Undefined offset: 1 in /home/search/meizizi/inc/util_for_simulate.php on line 1086
+PHP Notice:  Undefined offset: 1 in /home/search/meizizi/inc/util_for_simulate.php on line 1087
+PHP Notice:  Undefined variable: ctinfo in /home/search/meizizi/inc/util_for_simulate.php on line 1098
+PHP Warning:  file_get_contents(): Filename cannot be empty in /home/search/meizizi/inc/util_for_simulate.php on line 1479
+PHP Warning:  file_put_contents(/tmp/): failed to open stream: Is a directory in /home/search/meizizi/inc/util_for_simulate.php on line 1480
+PHP Notice:  getimagesize(): Read error! in /home/search/meizizi/inc/util_for_simulate.php on line 1481
+PHP Warning:  rename(/tmp/,/tmp/.): Device or resource busy in /home/search/meizizi/inc/util_for_simulate.php on line 1483
+PHP Notice:  Undefined index: result_url in /home/search/meizizi/inc/util_for_simulate.php on line 384
+PHP Notice:  Undefined index: result_url in /home/search/meizizi/inc/util_for_simulate.php on line 441

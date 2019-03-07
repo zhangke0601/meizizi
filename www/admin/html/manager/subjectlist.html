@@ -1,0 +1,176 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsDictinfos.php');
+$title = '主题列表';
+$nav = 'subject';
+require_once($base_dir.'www/admin/html/manager/head.html');
+
+
+$dict = new Dictinfos();
+
+$p = GetItemFromArray($_GET,'p');
+$s = GetItemFromArray($_GET,'s');
+$t = GetItemFromArray($_GET,'t');
+
+$p = intval($p);
+if($p < 1)
+  $p = 1;
+list($totalcount,$subinfos) = $dict->GetSubjectInfosByParams($p, $s);
+$pagecount = ceil($totalcount/COUNT_PER_PAGE);
+
+?>
+<style>
+  .px{
+    float: right;
+    margin-top: -24px;
+    margin-right: -7px;
+    color: red;
+  }
+</style>
+<div class="container" style="background-color:white">
+  <div class="row" style="height:50px;padding-top:10px">
+    <form>
+    <input value="<?php echo $s;?>" id="s" name="s" placeholder="输入主题查询" class="form-control" style="width:200px;float:left;margin-right:10px"/>
+    <button class="btn btn-default " onclick="search();">查询</button>
+    <a class="btn btn-primary btn-sm pull-right" href="javascript:void(0)" onclick="editdict('')">新增主题</a>
+    </form>
+  </div>
+  <div class="row">
+    <table class="table table-bordered">
+      <thead><td>ID</td><td>作品主题名称</td><td>显示状态</td><td>排序</td><td>添加时间</td><td>操作</td></thead>
+      <?php
+        foreach($subinfos as $info)
+        {
+          echo sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
+            $info['ctsuid'], $info['ctsuname'],
+            $dictstates[$info['ctsustate']],
+            $info['ctsusort'],$info['ctsucreatetime'],
+            sprintf('<a href="javascript:void(0)" onclick="editdict(%d);">编辑</a><a style="margin-left:20px" href="javascript:void(0)" onclick="deletedict(%d);">删除</a>', $info['ctsuid'], $info['ctsuid']));
+        }
+      ?>
+
+    </table>
+    <div class="text-center">
+      <span class="text-center">
+        <?php echo get_view_for_page_index($p,$pagecount,'?p=%s');?>
+      </span>
+    </div>
+  </div>
+</div>
+    </div>
+  </div>
+<!--/*{{{ EditView */-->
+<div class="modal fade bs-example-modal-lg" id="editModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabel">主题编辑</h4>
+      </div>
+      <div class="modal-body" id="editdetail">
+        <form id="form">
+        <input id="ctsuid" name="ctsuid" type="hidden"/>
+        <input id="type" name="type" class="submittype" type="hidden"/>
+        <table class="table table-bordered">
+          <tr><td class="lefttd" style="vertical-align:middle">内容主题</td>
+            <td><input id="ctsuname" name="ctsuname" class="form-control" placeholder="内容标签"/><p class="px">*</p></td></tr>
+          <tr><td class="lefttd" style="vertical-align:middle">显示状态</td>
+            <td>
+              <label><input id="ctsustate0" type="radio" name="ctsustate" value="<?php echo STATE_NOR;?>"> 显示</label>&nbsp;&nbsp;&nbsp;&nbsp;
+              <label><input id="ctsustate<?php echo STATE_OFFLINE;?>" type="radio" name="ctsustate" value="<?php echo STATE_OFFLINE;?>"> 禁用</label>
+              <p style="float: right;color: red;">*</p>
+            </td></tr>
+          <tr><td class="lefttd" style="vertical-align:middle">排序</td><td>
+            <input id="ctsusort" name="ctsusort" class="form-control" placeholder="填写排序数字" />
+          </td></tr>
+          <tr><td class="lefttd" style="vertical-align:middle">说明</td><td>
+              <textarea  id="ctsudesc" name="ctsudesc" class="form-control" style="float:left;margin-right:20px" placeholder="填写说明"></textarea>
+          </td></tr>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+        <button id="submitbtn" type="button" class="btn btn-primary btn-sm" onclick="submiteditinfo();">确定</button>
+      </div>
+      </form>
+    </div>
+  </div>
+</div>
+<!--/*}}}*/-->
+<script>
+function emptymodalinfo()
+{
+  $('#ctsuid').val('');
+  $('#ctsuname').val('');
+  $("input:radio[name=ctsustate]").removeAttr('checked');
+  $('#ctsusort').val('');
+  $('#ctsudesc').val('');
+}
+function editdict(ctsuid)
+{
+  emptymodalinfo();
+  if(ctsuid > 0)
+  {
+    var type = 'getsubjectinfobyctsuid';
+    <?php
+      $params = array('type','ctsuid');
+      echo generate_ajax($params,'getsubjectinfobyctsuidcb','/action/dictaction.php');
+    ?>
+  }
+  else
+  {
+    $('#editModal').modal('show');
+  }
+}
+
+function getsubjectinfobyctsuidcb(data)
+{
+  $('#editModal').modal('show');
+  $('#ctsuid').val(data.result.ctsuid);
+  $('#ctsuname').val(data.result.ctsuname);
+  $("input:radio[name=ctsustate]").removeAttr('checked');
+  $('#ctsustate'+data.result.ctsustate).attr('checked','checked');
+  $('#ctsusort').val(data.result.ctsusort);
+  $('#ctsudesc').val(data.result.ctsudesc);
+}
+
+function submiteditinfo()
+{
+  var ctsuid = $('#ctsuid').val();
+  var type = 'addsubjectinfo';
+  if(ctsuid > 0)
+    type = 'updatesubjectinfo';
+  $('.submittype').val(type);
+  <?php
+    $params = '$("#form").serialize()';
+    echo generate_ajax($params, 'cb', '/action/dictaction.php');
+  ?>
+  return false;
+}
+
+function deletedict(id)
+{
+  if(confirm('确认删除？'))
+  {
+    var type = 'deletesubjectinfo';
+    var ctsuid = id;
+    <?php
+      $params = array('type','ctsuid');
+    echo generate_ajax($params,'cb','/action/dictaction.php');
+    ?>
+  }
+}
+
+function cb(data)
+{
+  window.location.reload();
+}
+
+function search()
+{
+  var s = $('#s').val();
+  window.location.href="?s="+s;
+}
+</script>
+</body>
+</html>

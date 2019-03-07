@@ -1,0 +1,126 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+require_once($base_dir.'model/clsCartoonSectioninfos.php');
+require_once($base_dir.'model/clsPlatforminfos.php');
+$title = 'COOKIE无效列表';
+$nav = 'invalidcookies';
+require_once($base_dir.'www/admin/html/manager/head.html');
+
+
+$pf = new Platforminfos();
+$upfinfos = $pf->GetInvalidCookieInfos();
+
+foreach($upfinfos as $idx=>$info)
+{
+  $upfinfos[$idx]['uinfo'] = $user->find($info['uid']);
+}
+$totalcount = count($upfinfos);
+$pagecount = ceil($totalcount/COUNT_PER_PAGE);
+?>
+
+<div class="container" style="background-color:white">
+  <div class="row" style="height:40px;padding-top:10px">
+    <input id="s" name="s" placeholder="输入关键字" class="form-control" style="width:100px;float:left;margin-right:10px;display:none"/>
+    <button class="btn btn-default " style="display:none">查询</button>
+    <span style="text-align:center;margin-left:470px;margin-top:20px">共 <font style="color:red"><?php echo $totalcount;?></font> 条记录</span>
+  </div>
+  <div class="row">
+    <table class="table table-bordered">
+      <thead><td>ID</td><td>用户</td><td>平台</td><td>状态</td><td>操作</td><td>失效时间</td></thead>
+    <?php
+      foreach($upfinfos as $info)
+      {
+           echo sprintf('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
+          $info['upfid'],sprintf("%d-%s", $info['uinfo']['uid'], $info['uinfo']['umobile']),
+          $sources[$info['pfid']],$cookiesstates[$info['upfcookiesstate']],
+          sprintf('<a href="javascript:void(0)" onclick="getaccount(%d);">设置COOKIES</a>', $info['upfid']), $info['upfupdatetime']);
+      }
+    ?>
+    </table>
+    <div class="text-center">
+      <span class="text-center">
+        <?php echo get_view_for_page_index($p,$pagecount,'?p=%s');?>
+      </span>
+    </div>
+  </div>
+</div>
+    </div>
+  </div>
+  
+<!-- 标签 -->
+<div class="modal fade " id="cookieinfo" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe2">设置COOKIES</h4>
+      </div>
+      <div class="modal-body" id="editdetai">
+        <input type='hidden' id="upfid" value="upfid" />
+        <table class="table">
+          <tr><td style="width:80px">账户</td><td id="username"></td></tr>
+          <tr><td>密码</td><td id="password"></td></tr>
+          <tr><td>COOKIES</td><td><textarea id="cookies" class="form-control" style="resize:none;height:400px"></textarea></td></tr>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary btn-sm" onclick="setcookies();">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+function deletecart(ctid)
+{
+  var type = 'deletecarton';
+  <?php
+    $params = array('type','ctid');
+    echo generate_ajax($params,'deletecb','/action/cartoonaction.php');
+  ?>
+}
+function deletecb(data)
+{
+  window.location.reload();
+}
+</script>
+  <script>
+function getaccount(upfid)
+{
+  $('#upfid').val(upfid);
+  $('#cookies').val('');
+  var type = 'getaccountbyupfid';
+  <?php
+    $params = array('type','upfid');
+    echo generate_ajax($params,'getaccountcb','/action/platformaction.php');
+  ?>
+}
+
+function getaccountcb(data)
+{
+  $('#username').html(data.result.upfusername);
+  $('#password').html(data.result.upfpassword);
+  $('#cookies').val(data.result.upfcookies);
+  $('#cookieinfo').modal('show');
+}
+
+function setcookies()
+{
+  var upfid = $('#upfid').val();
+  var cookies = $('#cookies').val();
+  var type = 'setcookiesforupfid';
+  <?php
+    $params = array('type','upfid','cookies');
+    echo generate_ajax($params,'cb','/action/platformaction.php');
+  ?>
+}
+
+function cb(data)
+{
+  window.location.reload();
+}
+  </script>
+</body>
+</html>

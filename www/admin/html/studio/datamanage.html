@@ -1,0 +1,830 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+require_once($base_dir.'model/clsPlatforminfos.php');
+$title = '漫画工作室管理系统';
+$nav = 'datamanage';
+require_once($base_dir.'www/admin/html/studio/head.html');
+
+$pf = new Platforminfos();
+$cart = new Cartooninfos();
+
+$p = GetItemFromArray($_GET,'p');
+$search = GetItemFromArray($_GET,'search');
+
+//1.查询特定用户的漫画数据
+if($uinfo['utype'] == USERTYPE_STUDIOMANAGE){
+    //工作室管理员
+    //$cartinfos = $cart->getinfos(sprintf('uid=%d', $uinfo['upuid']));
+    list($totalcount,$cartinfos) = $cart->StudioGetCartooninfosByParams($uinfo['upuid'],$p,$search);
+}else{
+    //$cartinfos = $cart->getinfos(sprintf('uid=%d', $uid));
+    list($totalcount,$cartinfos) = $cart->StudioGetCartooninfosByParams($uid,$p,$search);
+}
+
+foreach($cartinfos as $idx=>$cartinfo)
+{
+  $cartinfos[$idx]['ctprogressname'] = $progresses[$cartinfo['ctprogress']];
+  $stat = $cart->GetReleaseStatByCtid($cartinfo['ctid']);
+  $stat = GetKeyAndValueFromArray($stat,'ctrrstate','count');
+  $cartinfos[$idx]['ctrrstat'] = $stat;
+}
+$pagecount = ceil($totalcount/COUNT_PER_PAGE);
+
+$pfinfos = $pf->getinfos('pfstate=0');
+$upfinfos = array();
+foreach($pfinfos as $idx=>$pfinfo)
+{
+  $upfinfo = $pf->existUserAndPlatform($uid,$pfinfo['pfid']);
+  if($upfinfo)
+  {
+    $upfinfo['pfinfo'] = $pfinfo;
+    $upfinfos[] = $upfinfo;
+  }
+}
+?>
+
+<style>
+.col-xs-3{text-align:center;line-height:40px}
+</style>
+
+<div class="container " style="<?php if($uinfo['udataauth']==5) { ?>display:none<?php } ?>;">
+  <div style="margin-top:40px;width:300px;margin:100px auto;padding:20px;font-size:13px;border:3px solid #ccc" class="">
+    <img style="width:78px;height:78px;margin-left:90px;margin-bottom:18px" src="/assets/avatars/avatar1.png"/>
+  <p style="text-indent:2em; ">美滋滋可以协助您整理作品运营数据（人气，收藏等）和各平台收入数据（分作品各平台日收，月收等），整理成图表，方便您另存和分析，节省您处理数据时间。如果您需要，请点击授权确认。</p>
+  <a class="btn btn-primary btn-sm" style="margin-left:90px;margin-top:2px;width:90px" onclick="dataauth();" >点击授权</a>
+  </div>
+</div>
+
+<div class="container" style="<?php if($uinfo['udataauth']!=5) { ?>display:none<?php } ?>;padding-top:20px">
+ <div class="row"> <!--style="display:none"-->
+     <form>
+       <input id="search" name="search" placeholder="输入作品名查询" class="form-control" style="width:400px;float:left;margin-right:10px" value="<?php echo $search;?>"/>
+    <input type="submit" class="btn btn-primary btn-sm" style="width:90px" value="查询">
+
+     </form>
+ </div>
+ <div class="row" id="editdetail" style="margin-top:20px">
+ </div>
+  <div class="row">
+      <table class="table table-bordered" style="text-align:center">
+          <thead >
+          <td>作品名</td><td>作者</td><td>进度</td><td>平台数据</td>
+          </thead>
+          <?php
+              foreach($cartinfos as $cartinfo)
+              {
+                $issuestate = 0;
+                $getfeedback = sprintf('<a href="datamanageforctid.html?ctid=%d" >查看详情</a>',$cartinfo['ctid']);
+                echo sprintf('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td>
+                  </tr>',
+                  $cartinfo['ctname'],$cartinfo['ctauthorname'],$cartinfo['ctprogressname'],
+                  $getfeedback);
+              }
+          ?>
+      </table>
+      <div class="text-center"><span class="text-center"><?php echo get_view_for_page_index($p, $pagecount, '?'.build_query(array('p'=>'%s')));?></span></div>
+
+
+  </div>
+    <div class="modal fade bs-example-modal-lg" id="feedbackinfo" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myModalLabel">反馈信息</h4>
+                </div>
+                <div class="modal-body" id="editdetailctid">
+                        <div>浏览总量:<span id="browse"></span></div>
+                        <div>收藏总量:<span id="collect"></span></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--  -->
+    <div class="modal fade bs-example-modal-lg" id="releasemodal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myModalLabe2">一键发布</h4>
+                </div>
+                <div class="modal-body" id="" style="padding-bottom:0px">
+                  <input type="hidden" id="ctid" name="ctid" />
+                  <input type="hidden" id="ctsid" name="ctsid" />
+                  <h4 style="display:none">待发布章节  <small id="unsection"></small></h4>
+                  <table class="table" style="margin-bottom:0px">
+                    <tr ><td style="width:100px">选择发布时间</td><td><input class="form-control" id="ctrrreleasetime" value="" onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd HH:mm' })" data-date-format="yyyy-mm-dd" placeholder="如果需要定时发布，在这里设置时间" ></td></tr>
+                    <tr><td>选择发布平台</td><td>
+                  <div class="row">
+                  <?php
+                    foreach($upfinfos as $info)
+                    {
+                      echo sprintf('<div class="col-sm-6 upfiddiv" id="upfiddiv%d"><label><input type="checkbox" class="upfid" id="upfid%d" name="upfid%d" >&nbsp;%s</label>&nbsp;&nbsp;<label class="csreleasetypelabel"><input type="radio" class="csreleasetype" id="csreleasetype%d" name="csreleasetype" onclick="clickreleasetype(%d)" value="%s">&nbsp;是否独家</label></div>', $info['upfid'], $info['upfid'], $info['upfid'], $info['pfinfo']['pfname'], $info['upfid'],$info['upfid'],$info['upfid']);
+                    }
+                  ?>
+                  <div class="col-sm-6"><a class="btn btn-default btn-sm csreleasetypelabel"  onclick="clearfirst();">清除独家</a></div>
+                  </div>
+                  <span class="csreleasetypelabel" style="color:gray">注：选择独家时不能选择其他平台，不选择为无独家平台</span>
+                    </td></tr>
+                    <tr id="csfirstreleasetr"><td>首发状态</td><td>
+                      <div>
+                      <?php
+                    foreach($upfinfos as $info)
+                    {
+                      echo sprintf('<div style="float:left"><label><input class="csfirstrelease" id="csfirstrelease%d" name="csfirstrelease%d" type="checkbox" onclick="clickfirstrelease(%d)"/>&nbsp;%s</label>&nbsp;&nbsp;&nbsp;&nbsp;</div>', $info['upfid'], $info['upfid'], $info['upfid'], $info['pfinfo']['pfname']);
+                    }
+                      ?>
+                      </div>
+                    </td></tr>
+                    <tr style="display:none" id="prevtr"><td></td><td>
+                        <div><input type="radio" name="csprevtype" value="1" />&nbsp;提前<input id="csprevvalue1" style="width:40px;margin-left:5px;margin-right:5px">天</div>
+                        <div><input type="radio" name="csprevtype" value="2" />&nbsp;提前<input id="csprevvalue2" style="width:40px;margin-left:5px;margin-right:5px">话</div>
+                    </td></tr>
+                    <tr><td></td><td id="sectlist"></td></tr>
+                  </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick='submitrelease();'>确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade bs-example-modal-lg" id="checkmodal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title" id="myModalLabel">设置分成系数</h4>
+      </div>
+      <div class="modal-body" id="checkdetail">
+        <table class="table" id="checklist"></table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary btn-sm" onclick="savexishu();">确定</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal fade bs-example-modal-lg" id="detailmodal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" data-backdrop="static" data-keyboard="false">
+
+    <div class="modal-dialog modal-lg" role="document" style="width:100%">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabe22">收入明细</h4>
+            </div>
+
+            <div class="row">
+                <table class="table table-bordered" style="text-align:center" id="detail">
+                    <thead >
+                    <td>作品名</td>
+                    <?php
+                        $month = date('m',time());
+                        $day = date('d',time());
+                        for($i = 1 ;$i <= $day; $i ++)
+                        {
+                            echo '<td>'.$month.'月'.$i.'日</td>';
+                        }
+                    ?>
+                    </thead>
+                    <tbody id="detail-body">
+
+                    </tbody>
+
+
+                </table>
+                <div class="text-center"><span class="text-center"></span></div>
+
+
+            </div>
+
+</div>
+    </div>
+</div>
+
+
+        <div class="modal fade bs-example-modal-lg" id="detailmodal2" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog modal-lg" role="document" style="width:100%">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title" id="myModalLabe333">当月收入明细</h4>
+                    </div>
+
+                    <div class="row">
+                        <table class="table table-bordered" style="text-align:center" id="detail3">
+                            <thead id="detail-head33">
+                            <td>作品名</td>
+
+                            </thead>
+                            <tbody id="detail-body33">
+                            <td>收入</td>
+
+                            </tbody>
+
+
+                        </table>
+                        <div class="text-center"><span class="text-center"></span></div>
+
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+
+<script>
+
+gettotalstat();
+/*获取总的统计数据*/
+function gettotalstat()
+{
+  var type = 'getstatfortotal';
+  <?php
+  $params = array('type');
+  echo generate_ajax($params,'gettotalstatcb','/action/cartoonaction.php');
+  ?>
+}
+
+function gettotalstatcb(data)
+{
+  var ht = '<div class="tabbable">';
+  ht += '		<ul class="nav nav-tabs" id="myTab">';
+  for(var i in data.result.tabs)
+  {
+    var c = '';
+    if(i == 0)
+      c = 'active';
+		ht += '<li class="'+c+'">';
+		ht += '  <a data-toggle="tab" href="#home'+i+'">';
+		ht += '	   <i class="green bigger-110"></i>';
+	  ht += '		'+data.result.tabs[i]+'</a></li>';
+  }
+  ht += '</ul>';
+
+  ht += '<div class="tab-content">';
+  for(var i in data.result.tabs)
+  {
+    var c = '';
+    if(i == 0)
+      c = 'active';
+	  ht += '<div style="" id="home'+i+'" class="tab-pane '+c+'">';
+    if(i == 0 ){
+      ht += '<div class="col-xs-3" style="margin-bottom:15px">今日收入'+data.result.income.curday.toFixed(2)+'</div>';
+      ht += '<div class="col-xs-3">昨日收入'+data.result.income.preday.toFixed(2)+'</div>';
+      ht += '<div class="col-xs-3">本月收入'+data.result.income.curmon.toFixed(2)+'</div>';
+      ht += '<div class="col-xs-3">累计收入'+data.result.income.total.toFixed(2)+'</div>';
+    }else if(i==1){
+      ht += '<div class="col-xs-3">今日'+data.result.hit.curday+'</div>';
+      ht += '<div class="col-xs-3">昨日'+data.result.hit.preday+'</div>';
+      ht += '<div class="col-xs-3">本月'+data.result.hit.curmon+'</div>';
+      ht += '<div class="col-xs-3">累计'+data.result.hit.total+'</div>';
+    }else if(i==2){
+      ht += '<div class="col-xs-3">今日'+data.result.tu.curday+'</div>';
+      ht += '<div class="col-xs-3">昨日'+data.result.tu.preday+'</div>';
+      ht += '<div class="col-xs-3">本月'+data.result.tu.curmon+'</div>';
+      ht += '<div class="col-xs-3">累计'+data.result.tu.total+'</div>';
+    }else if(i==3){
+      ht += '<div class="col-xs-3">今日'+data.result.cang.curday+'</div>';
+      ht += '<div class="col-xs-3">昨日'+data.result.cang.preday+'</div>';
+      ht += '<div class="col-xs-3">本月'+data.result.cang.curmon+'</div>';
+      ht += '<div class="col-xs-3">累计'+data.result.cang.total+'</div>';
+    }
+
+      ht += '<table class="table" id="monstat'+i+'">';
+    ht += '<tr><td><input id="input'+i+'" type="checkbox" onclick="selectallcheckbox('+i+')"/>&nbsp;&nbsp;日期</td>';
+      for(var k in data.result.pfinfos)
+      {
+        ht += '<td style="cursor:pointer;" onclick="showdetail('+data.result.pfinfos[k].pfid+')">'+data.result.pfinfos[k].pfname+'</td>';
+      }
+      ht += '<td>合计</td></tr>';
+      for(var j in data.result.monsdinfos)
+      {
+        // console.log(j);
+        ht += '<tr><td><input type="checkbox" class="input'+i+'"/>&nbsp;&nbsp;<a href="datamanageforctidday.html?mon='+j+'&i='+i+'" >'+j+'</a></td>';
+        var total = 0;
+        for(var k in data.result.pfinfos)
+        {
+          var pfid = data.result.pfinfos[k].pfid;
+          var v = 0;
+          if(data.result.monsdinfos[j][pfid])
+          {
+            var val = '';
+            if(i==0)
+              val = data.result.monsdinfos[j][pfid].ctsdmonincome;
+            else if(i==1)
+              val = data.result.monsdinfos[j][pfid].ctsdmonbrowsercount;
+            else if(i==2)
+              val = data.result.monsdinfos[j][pfid].ctsdmontucaocount;
+            else if(i==3)
+              val = data.result.monsdinfos[j][pfid].ctsdmoncollectcount;
+
+
+            if((val>0) || val.length > 0)
+            {
+              if(val.length > 0)
+              {
+                total += parseFloat(val.replace(',',''));
+                v = parseFloat(val.replace(',',''));
+              }
+              else
+              {
+                total += val;
+                v = val;
+              }
+              v = v.toFixed(2);
+              // ht += '<td onclick="showpfdetail('+pfid+','+j.toString()+' )" style="cursor:pointer;">'+v+'</td>';
+
+
+                // ht += '<td onclick="showpfdetail('+pfid+','+j.toString()+' )" style="cursor:pointer;">'+v+'</td>';
+
+
+                ht += `<td onclick="showpfdetail(${pfid},'${j.toString()}')" style="cursor:pointer;">${v}</td>`
+
+                // console.log(`<td onclick="showpfdetail(${pfid},'${j.toString()}')" style="cursor:pointer;">${v}</td>`)
+
+
+              // ht += '<td onclick="showpfdetail('+pfid+','+  '"' + j.toString() + '"' +'  )" style="cursor:pointer;">'+v+'</td>';
+            }
+            else
+              ht += '<td>-</td>';
+          }
+          else
+            ht += '<td>-</td>';
+
+        }
+        total = total.toFixed(2);
+        ht +=  `<td onclick="showpfdetail(0,'${j.toString()}')" style="cursor:pointer;">${total}</td></tr>`
+        // ht += '<td>'+total+'</td></tr>';
+      }
+      ht += '</table>';
+      ht += '<a class="btn btn-primary btn-sm" onclick="downdaystat('+i+')" style="width:90px">导出</a>';
+
+	  ht += '</div>';
+  }
+  ht += '							</div>';
+  ht += '				</div>';
+
+  $('#editdetail').html(ht);
+}
+
+
+
+/* 查看反馈数据 */
+function getfeedbackinfo(ctid)
+{
+  var type = 'getmonthstatbyctid';
+  <?php
+  $params = array('type','ctid');
+  echo generate_ajax($params,'getfeedcb', '/action/cartoonaction.php');
+  ?>
+}
+
+function getfeedcb(data)
+{
+  var ht = '<div class="tabbable">';
+  ht += '		<ul class="nav nav-tabs" id="myTab">';
+  for(var i in data.result.tabs)
+  {
+    var c = '';
+    if(i == 0)
+      c = 'active';
+		ht += '<li class="'+c+'">';
+		ht += '  <a data-toggle="tab" href="#homectid'+i+'">';
+		ht += '	   <i class="green bigger-110"></i>';
+	  ht += '		'+data.result.tabs[i]+'</a></li>';
+  }
+  ht += '</ul>';
+
+  ht += '<div class="tab-content">';
+  for(var i in data.result.tabs)
+  {
+    var c = '';
+    if(i == 0)
+      c = 'active';
+	  ht += '<div id="homectid'+i+'" class="tab-pane '+c+'">';
+    //if(i == 0)
+    {
+      ht += '<table class="table" id="monstat'+i+'">';
+      ht += '<tr><td>日期</td><td>作品名</td>';
+      for(var k in data.result.pfinfos)
+      {
+        ht += '<td>'+data.result.pfinfos[k].pfname+'</td>';
+      }
+      ht += '<td>合计</td></tr>';
+      for(var j in data.result.sdinfos)
+      {
+        ht += '<tr><td><a href="javascript:;">'+j+'</a></td>';
+        ht += '<td>'+data.result.ctinfo.ctname+'</td>';
+        var total = 0;
+        for(var k in data.result.pfinfos)
+        {
+          var pfid = data.result.pfinfos[k].pfid;
+          if(data.result.sdinfos[j][pfid])
+          {
+            var val = '';
+            if(i==0)
+              val = data.result.sdinfos[j][pfid].ctsdmonincome;
+            else if(i==1)
+              val = data.result.sdinfos[j][pfid].ctsdmonbrowsercount;
+            else if(i==2)
+              val = data.result.sdinfos[j][pfid].ctsdmontucaocount;
+            else if(i==3)
+              val = data.result.sdinfos[j][pfid].ctsdmoncollectcount;
+
+            if((val>0) || val.length > 0)
+            {
+              ht += '<td>'+val+'</td>';
+              if(val.length > 0)
+                total += parseFloat(val.replace(',',''));
+              else
+                total += val;
+            }
+            else
+              ht += '<td>-</td>';
+          }
+          else
+            ht += '<td>-</td>';
+        }
+        ht += '<td>'+total+'</td></tr>';
+      }
+      ht += '</table>';
+      ht += '<table class="table" id="daystat'+i+'" style="display:none">';
+      ht += '</table>';
+    }
+
+	  ht += '</div>';
+  }
+  ht += '							</div>';
+  ht += '				</div>';
+
+  $('#editdetailctid').html(ht);
+  $('#feedbackinfo').modal('show');
+}
+
+function getdaystatforctid(mon,ctid,i)
+{
+  var type = 'getdaystatbyctid';
+  <?php
+  $params = array('type','mon','ctid','i');
+  echo generate_ajax($params,'getdaystatforctidcb', '/action/cartoonaction.php');
+  ?>
+}
+
+function getdaystatforctidcb(data)
+{
+  var i = data.result.i;
+  var ht = '';
+  ht += '<tr><td>日期</td><td>作品名</td>';
+  for(var k in data.result.pfinfos)
+  {
+    ht += '<td>'+data.result.pfinfos[k].pfname+'</td>';
+  }
+  ht += '<td>合计</td></tr>';
+  for(var j in data.result.sdinfos)
+  {
+    ht += '<tr><td><a href="javascript:;" >'+j+'</a></td>';
+      ht += '<td>'+data.result.ctinfo.ctname+'</td>';
+      var total = 0;
+      for(var k in data.result.pfinfos)
+      {
+        var pfid = data.result.pfinfos[k].pfid;
+        if(data.result.sdinfos[j][pfid])
+        {
+          var val = '';
+          if(i==0)
+            val = data.result.sdinfos[j][pfid].ctsddayincome;
+          else if(i==1)
+            val = data.result.sdinfos[j][pfid].ctsddaybrowsercount;
+          else if(i==2)
+            val = data.result.sdinfos[j][pfid].ctsddaytucaocount;
+          else if(i==3)
+            val = data.result.sdinfos[j][pfid].ctsddaycollectcount;
+
+          if((val>0) || val.length > 0)
+          {
+            ht += '<td>'+val+'</td>';
+            if(val.length > 0)
+              total += parseFloat(val.replace(',',''));
+            else
+              total += val;
+          }
+          else
+            ht += '<td>-</td>';
+        }
+        else
+          ht += '<td>-</td>';
+      }
+      ht += '<td>'+total+'</td></tr>';
+    }
+
+  $('#daystat'+data.result.i).html(ht);
+  $('#daystat'+data.result.i).show();
+}
+
+
+/* 查看 发布历史 */
+function getissueinfo(ctid)
+{
+  $('#browse').html('暂无');
+  $('#collect').html('暂无');
+  //$('#browse').html(ctid);
+  //$('#collect').html(ctid);
+  $('#feedbackinfo').modal('show');
+}
+
+
+var upfinfos = <?php echo json_encode($upfinfos);?>;
+
+function isEmptyObject(obj){
+  for(var key in obj){
+    return false
+  };
+  return true
+};
+
+function clickreleasetype(upfid)
+{
+  $('.upfid').attr('disabled', true);
+  $('.csfirstrelease').attr('disabled','true');
+  $('.csfirstrelease').each(function(){
+    this.checked = false;
+  });
+  $('.upfid').each(function(){
+    if(this.id == 'upfid'+upfid)
+      this.checked = true;
+    else
+      this.checked = false;
+  });
+}
+
+function clickfirstrelease(upfid)
+{
+  var count = 0;
+  $('.csfirstrelease').each(function(){
+    if(this.checked)
+    {
+      $('#upfid'+upfid)[0].checked = true;
+      ++count;
+    }
+  });
+  if(count > 2)
+  {
+    alert('首发最多两个平台，请重新选择');
+  }
+  if(count > 0)
+    $('#prevtr').show();
+  else
+    $('#prevtr').hide();
+}
+
+function clearfirst()
+{
+  $('.csreleasetype').each(function(){
+    this.checked = false;
+  });
+  $('.upfid').removeAttr('disabled');
+  $('.csfirstrelease').removeAttr('disabled');
+}
+
+function clicksection(obj)
+{
+  var dataid = $(obj).attr('data-id');
+  $('.sectionid').each(function(){
+    var did = $(this).attr('data-id');
+    if(obj.checked)
+    {
+      if(did <= dataid)
+        this.checked = true;
+      else
+        this.checked = false;
+    }
+    else
+    {
+      if(did > dataid)
+        this.checked = false;
+    }
+  });
+}
+
+
+function reopenrelease(ctrrid)
+{
+  var type = 'reopenrelease';
+  <?php
+  $params = array('type','ctrrid');
+  echo generate_ajax($params,'cb','/action/cartoonaction.php');
+  ?>
+}
+
+function cb(data)
+{
+  window.location.reload();
+}
+
+function selectallcheckbox(i)
+{
+  var selected = $('#input'+i).is(':checked');
+  if(selected)
+  {
+    $('.input'+i).each(function(){
+      this.checked = true;
+    });
+  }
+  else
+  {
+    $('.input'+i).each(function(){
+      this.checked = false;
+    });
+  }
+}
+
+function downdaystat(i)
+{
+  var mons = new Array();
+  $('.input'+i).each(function(){
+    if(this.checked)
+      mons.push($(this).next().html());
+  });
+
+  if(mons.length > 0)
+  {
+    $('#mons').val(JSON.stringify(mons));
+    downform.submit();
+  }
+  else
+  {
+    alert('请选择月份');
+  }
+}
+
+function dataauth()
+{
+  var type = 'dataauth';
+  <?php
+  $params = array('type');
+  echo generate_ajax($params,'cb','/action/useraction.php');
+  ?>
+}
+
+</script>
+<script>
+
+getxishuinfos();
+
+function getxishuinfos(){
+  var type = 'getxishuinfos';
+  <?php
+  $params = array('type');
+  echo generate_ajax($params,'getxishuinfoscb','/action/cartoonaction.php');
+  ?>
+}
+
+function getxishuinfoscb(data){
+  if(data.result.length > 0){
+    var ht = '<tr><th>ID</th><th>作品</th><th>平台</th><th>分成系数</th></tr>';
+    for(var i in data.result){
+      ht += '<tr><td>'+data.result[i].csid+'</td><td>'+data.result[i].ctname+'</td><td>'+data.result[i].pfname+'</td><td><input class="form-control xishuset" style="width:80px;display:initial" data-csid="'+data.result[i].csid+'"  onkeyup="CheckInputIntFloat(this)"  onafterpaste="CheckInputIntFloat(this)" placeholder="1~100" value="'+data.result[i].csdividexishu+'" /> %</td></tr>';
+    }
+    $('#checklist').html(ht);
+    $('#checkmodal').modal('show');
+  }
+}
+
+function savexishu()
+{
+  var xishus = new Array();
+  var all = true;
+  $('.xishuset').each(function(){
+    if(this.value.length > 0){
+      if((this.value>=1) && (this.value<=100))
+        xishus.push({csid:$(this).attr('data-csid'), value:this.value});
+      else
+        all = false;
+    }else
+      all = false;
+  });
+
+  if(all){
+    var type = 'setxishuinfos';
+    var xishues = JSON.stringify(xishus);
+    <?php
+    $params = array('type', 'xishues');
+    echo generate_ajax($params,'setxishuinfoscb','/action/cartoonaction.php');
+    ?>
+  }else{
+    alert('请完整填写系数信息');
+  }
+}
+
+function setxishuinfoscb(data){
+  alert('设置成功');
+  window.location.reload();
+}
+
+function CheckInputIntFloat(oInput)
+{
+  if('' != oInput.value.replace(/\d{1,}\.{0,1}\d{0,}/,''))
+  {
+    oInput.value = oInput.value.match(/\d{1,}\.{0,1}\d{0,}/) == null ? '' :oInput.value.match(/\d{1,}\.{0,1}\d{0,}/);
+  }
+}
+
+function showpfdetail(pfid,time)
+{
+    // console.log(time);
+    <?php
+        $params = array('pfid','time');
+        echo generate_ajax($params,'pfdetailmodal', '/action/pfincomeBytime.php');
+    ?>
+}
+
+function pfdetailmodal(data)
+{
+    // console.log(data);
+    $('#detail-body33').empty();
+    $('#detail-head33').empty();
+    $('#detailmodal2').modal('show');
+    var head = '';
+    head += '<td>作品名</td><td>当月总收入</td>';
+
+    $('#detail-head33').append(head);
+    var detail = '';
+    for(var i in data.data) {
+        detail +='<tr>';
+        detail += '<td>'+data.data[i].ctname+'</td>';
+        if(data.data[i].fincome == null || data.data[i].fincome == 0){
+            var ddd = '-';
+        }else{
+            var ddd = data.data[i].fincome;
+        }
+        detail += '<td>'+ddd+'</td>';
+        detail += '</tr>';
+    }
+    $('#detail-body33').append(detail);
+    if(data.paltinfo == null || data.paltinfo == ''){
+        $('#myModalLabe333').html('总和收入总计');
+    }else{
+        $('#myModalLabe333').html(data.paltinfo+'收入总计');
+    }
+
+
+}
+
+function showdetail(pfid)
+{
+    //alert(pfid);return;
+    <?php
+        $params = array('pfid');
+        echo generate_ajax($params,'releasemodalcb', '/action/pfincome.php');
+    ?>
+}
+
+function releasemodalcb(data)
+{
+    // console.log(data);
+    $('#detail-body').empty();
+    $('#detailmodal').modal('show');
+    // alert(data.paltinfo+'本月收入明细');
+    $('#myModalLabe22').html(data.paltinfo+'本月收入明细');
+    if(data.data.length == 0){
+        alert('没有收入');return;
+    }
+    var html = '';
+    for(var i in data.data){
+          html += '<tr><td>'+data.data[i].ctname+'</td>';
+          for(var j in data.data[i].fincome){
+              if(data.data[i].fincome[j].income == 0){
+                  html += '<td>-</td>';
+              }else{
+                  html += '<td>'+data.data[i].fincome[j].income+'</td>';
+              }
+
+
+          }
+
+          html += '</tr>';
+    }
+    $('#detail-body').append(html);
+
+}
+
+</script>
+<form method="post" id="downform" style="display:none" action="/action/cartoonaction.php">
+  <input type='hidden' id="type" name="type" value="downdaystatebyctid"/>
+  <input type='hidden' id="ctid" name="ctid" value="0" />
+  <input type='hidden' id="mons" name="mons" value="" />
+</form>
+</body>
+</html>

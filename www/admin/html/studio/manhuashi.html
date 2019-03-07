@@ -1,0 +1,162 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+$nav = 'manhuashi';
+require_once($base_dir.'www/admin/html/studio/head.html');
+require_once($base_dir.'model/clsUserinfos.php');
+$user = new Userinfos();
+$p = GetItemFromArray($_GET,'p');
+$search = GetItemFromArray($_GET,'search');
+list($count,$comicinfos) = $user->GetComicInfosByUpuidAndParams($uinfo['uid'],$search,$p);
+$pagecount = ceil($count/COUNT_PER_PAGE);
+if(intval($p) < 1)
+    $p = 1;
+?>
+<style>
+    .px{
+        float: right;
+        margin-top: -24px;
+        margin-right: -7px;
+        color: red;
+    }
+</style>
+<div class="container">
+    <div class="row">
+        <div style="line-height:60px;font-size:22px">漫画师管理</div>
+        <div class="row" style="">
+            <form>
+                <input id="search" name="search" placeholder="输入关键字" class="form-control" style="width:100px;float:left;margin-right:10px"/>
+                <input type="submit" class="btn btn-default " value="查询">
+                <button class="btn btn-primary btn-sm pull-right" onclick="return adduinfo()">添加漫画师</button>
+            </form>
+        </div>
+        <table class="table table-bordered">
+            <thead><td>漫画师姓名</td><td>手机号</td><td>状态</td><td>操作</td></thead>
+            <?php
+            foreach($comicinfos as $comicinfo)
+            {
+                $del = sprintf('<a onclick="deluserinfo(%d)">删除</a>',$comicinfo['uid']);
+                $btn = '';
+                if($comicinfo['ustate'] == STATE_NOR)
+                    $btn = sprintf('<a onclick="lockcomicinfo(%d)">锁定</a>',$comicinfo['uid']);
+                elseif($comicinfo['ustate'] == STATE_LOCK)
+                    $btn = sprintf('<a onclick="relievelock(%d)" >解除锁定</a>',$comicinfo['uid']);
+                echo sprintf('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s %s</td></tr>',
+                    $comicinfo['urealname'],$comicinfo['umobile'],$ustates[$comicinfo['ustate']],
+                    $btn,$del);
+            }
+            ?>
+        </table>
+        <div class="text-center"><span class="text-center"><?php echo get_view_for_page_index($p, $pagecount, '?'.build_query(array('p'=>'%s')));?></span></div>
+
+    </div>
+
+    <!-- 添加漫画师 -->
+    <div class="modal fade bs-example-modal" id="uinfo" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+        <div class="modal-dialog" role="document" style="width: 480px;" >
+            <div class="modal-content" >
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="dispatchModalLabel">添加漫画师</h4>
+                </div>
+                <div class="modal-body">
+                    <table class="table">
+                        <tr >
+                            <td>用户名称</td>
+                            <td>
+                                <input id="urealname" type="text" class="form-control"  />
+                                <p class="px">*</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>手机号</td>
+                            <td><input type="number" id="umobile"  class="form-control" /><p class="px">*</p></td>
+                        </tr>
+
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+                    <button id="submitbtn" type="button" class="btn btn-primary" onclick="submotuinfo();">确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+<script>
+    function adduinfo()
+    {
+        $("#urealname").val('');
+        $("#umobile").val('');
+        $('#uinfo').modal('show');
+      return false;
+    }
+    /* 提交漫画师 */
+    function submotuinfo()
+    {
+        var type = 'addstudiocomicinfo';
+        var urealname = $('#urealname').val();
+        var umobile = $('#umobile').val();
+        if(!(/^1[34578]\d{9}$/.test(umobile))){
+            alert("手机号码有误，请重填");
+            return false;
+        }
+        else
+        {
+            if(checkitemnull(urealname,'用户名'))
+            {
+                <?php
+                $params = array('type','urealname','umobile');
+                echo generate_ajax($params,'tishi','/action/useraction.php');
+                ?>
+            }
+
+        }
+
+    }
+    function del(uid)
+    {
+        var type = 'updateuserinfoupuid';
+        <?php
+        $params = array('type','uid');
+        echo generate_ajax($params,'tishi','/action/useracion.php');
+        ?>
+    }
+    /* 锁定账户 */
+    function lockcomicinfo(uid)
+    {
+        var type = 'updateuserstate';
+        var ustate = <?php echo STATE_LOCK?>;
+        <?php
+        $params = array('type','uid','ustate');
+        echo generate_ajax($params,'tishi','/action/useraction.php')
+        ?>
+    }
+    function relievelock(uid)
+    {
+        var type = 'updateuserstate';
+        var ustate = <?php echo STATE_NOR?>;
+        <?php
+        $params = array('type','uid','ustate');
+        echo generate_ajax($params,'tishi','/action/useraction.php')
+        ?>
+    }
+    function tishi(data)
+    {
+        alert('操作成功');
+        window.location.reload();
+    }
+    /*  */
+    function checkitemnull(str, viewstr)
+    {
+        if((str!=null) && (str.length>0))
+            return true;
+        else
+        {
+            alert(viewstr+"为空");
+            return false;
+        }
+    }
+</script>
+</body>
+</html>

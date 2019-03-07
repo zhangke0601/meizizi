@@ -1,0 +1,82 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../';
+require_once($base_dir.'model/clsUserinfos.php');
+
+$user = new Userinfos();
+$uinfo = $user->IsLogin();
+if($uinfo === false || $uinfo['utype'] != 999)
+{
+    echo "<script>alert('抱歉，您无权访问')</script>";
+    gotoUrl('/index.html');
+    exit();
+
+}
+// 查询所有的工作室
+$allRooms = $user->comicRooms();
+
+?>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+  <script src="/assets/js/jquery-1.10.2.min.js"></script>
+  <title>美滋滋漫画上传管理工具</title>
+</head>
+<body background="/assets/images/login_bg.jpg" style="background-repeat: no-repeat ;background-size: 100% 100%;background-attachment:fixed">
+  <div class="container">
+    <div class="center-block" style="margin-top:120px">
+      <div class="center-block" style="width:350px;background-color:white;box-shadow: 1px 1px 10px 1px rgba(0, 0, 0, 0.3);margin:0 auto;border-radius:5px">
+        <div style="padding:40px 30px 20px 30px;text-center">
+          <div class="text-center" style="margin-bottom:20px">
+            <img src="/assets/avatars/avatar1.png" style="width:62px;margin-bottom:5px"/><br>
+            <strong>美滋滋漫画上传管理工具</strong>
+          </div>
+          <select class="form-control" style="margin-bottom:10px;width:290px" id="uid">
+            <option>请选择需要登录的工作室</option>
+            <?php
+               foreach($allRooms as $rooms){
+                   echo sprintf('<option value="%d">%s</option>',$rooms['uid'], $rooms['urealname']);
+               }
+            ?>
+          </select>
+
+
+          <div class="text-center" style="margin-top:30px">
+            <button class="btn btn-default btn-sm" style="width:290px;height:36px;background-color: #197dc3;color: white;border-radius: 6px;" onclick="login()">登录</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+function login()
+{
+  var uid = $('#uid').val();
+  var type = 'super_login';
+  <?php
+    $params = array('type','uid');
+    echo generate_ajax($params,'logincb', '/action/useraction.php');
+  ?>
+}
+
+function logincb(data)
+{
+  //window.location.reload();
+    if(data.retno == 0){
+       window.location.replace('index.html');
+    }
+}
+
+$('#upasswd').bind('keyup', function(event) {
+  if (event.keyCode == "13") {
+    //回车执行查询
+    login();
+  }
+});
+
+</script>
+</body>
+</html>
+ 

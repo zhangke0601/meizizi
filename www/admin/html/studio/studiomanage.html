@@ -1,0 +1,516 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+$title = '管理员管理';
+$nav = 'studiomanage';
+require_once($base_dir.'www/admin/html/studio/head.html');
+require_once($base_dir.'model/clsUserinfos.php');
+$user = new Userinfos();
+
+$page =  GetItemFromArray($_GET,'page');
+$s =  GetItemFromArray($_GET,'s');
+$search = GetItemFromArray($_GET,'search');
+$tab = GetItemFromArray($_GET,'tab');
+list($sugcount,$suginfos) = $user->GetStudioGroupInfosByParams($uinfo['uid'],$page,$search);
+$allsuginfos = $user->getinfos(sprintf('sugstate=%d and uid=%d',STATE_NOR,$uinfo['uid']),'studiousergroupinfos');
+$kvs = GetKeyAndValueFromArray($allsuginfos,'sugid','sugname');
+$pagecount = ceil($sugcount/COUNT_PER_PAGE);
+$p = GetItemFromArray($_GET,'p');
+list($count,$studiomanageinfos) = $user->GetManagerinfosByUpuidAndParams($uinfo['uid'],$p,$s);
+$pcount = ceil($count/COUNT_PER_PAGE);
+
+if(intval($p) < 1)
+    $p = 1;
+
+if(intval($page) < 1)
+    $page = 1;
+
+?>
+<style>
+    .px{
+        float: right;
+        margin-top: -24px;
+        margin-right: -7px;
+        color: red;
+    }
+    .tab .active{
+      border-left:10px solid #0d7ac6;
+    }
+</style>
+<div class="container" style="height:64px;font-size:17px;margin-top:20px;margin-bottom:10px;min-height:64px">
+ <div class="row" style="line-height:64px;margin:0px 0px 0px 10px;color:#323232">
+   管理员管理
+ </div>
+</div>
+
+<div class="container" style="background-color:white">
+
+    <div class="tabbable tabs-left">
+        <ul class="nav nav-tabs" id="myTab3" style="margin-top:20px">
+          <li class="<?php if($tab!='profile3'){ ?>active<?php } ?>">
+                <a data-toggle="tab" href="#home3" style="border:0px">
+                    管理人员
+                </a>
+            </li>
+            <li class="<?php if($tab=='profile3'){?>active<?php } ?>">
+                <a data-toggle="tab" href="#profile3" id="profile3a" style="border:0px">
+                   权限类别 
+                </a>
+            </li>
+            <li class="" style="display:none">
+                <a data-toggle="tab" href="#dropdown13">
+                    修改密码
+                </a>
+            </li>
+        </ul>
+        <div class="tab-content" style="border:0px;border-left:1px">
+            <div id="home3" class="tab-pane <?php if($tab!='profile3'){ ?>active<?php } ?> ">
+                <div class="row" style="">
+                    <form>
+                      <input id="s" name="s" placeholder="输入用户名查询" class="form-control" style="width:400px;float:left;margin-right:10px" value="<?php echo $s;?>"/>
+                    <input class="btn btn-primary btn-sm"type="submit" value="查询">
+                    <a class="btn btn-primary btn-sm pull-right" href="javascript:void(0)" onclick="editauth(0);" style="width:150px" >增加管理员</a>
+                    </form>
+                </div>
+                <div class="row" style="margin-top:20px">
+                    <table class="table table-bordered">
+                        <thead><td>用户名</td><td>管理员组</td><td>真实姓名</td><td>手机号</td><td>用户状态</td><td>添加时间</td><td>操作</td></thead>
+                        <?php
+                        foreach($studiomanageinfos as $info)
+                        {
+                            if($info['sugid'] == 0 )
+                                $kvsname = '暂无';
+                            else
+                                $kvsname = $kvs[$info['sugid']];
+                            echo sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
+                                $info['uname'], $kvsname,
+                                $info['urealname'], $info['umobile'],
+                                $austates[$info['ustate']],$info['ucreatetime'],
+                                sprintf('<a onclick="editauth(%d)" href="javascript:void(0)">编辑</a>
+                                <a style="margin-left:20px" onclick="deleteauth(%d);" href="javascript:void(0)">删除</a>', $info['uid'], $info['uid'])
+                            );
+                        }
+                        ?>
+                    </table>
+                    <div class="text-center"><span class="text-center"><?php echo get_view_for_page_index($p, $pcount, '?'.build_query(array('p'=>'%s')));?></span></div>
+
+                </div>
+            </div>
+            <div id="profile3" class="tab-pane <?php if($tab=='profile3'){?>active<?php } ?>">
+                <div class="row" style="">
+                    <form>
+                      <input name="tab" value='profile3' type='hidden'/>
+                      <input id="search" name="search" placeholder="输入管理员组名称查询" class="form-control" style="width:400px;float:left;margin-right:10px" value="<?php echo $search;?>"/>
+                    <input class="btn btn-primary btn-sm" type="submit" value="查询">
+                    <a class="btn btn-primary btn-sm pull-right" href="javascript:void(0)" onclick="editgroup('');" style="width:150px" >增加权限类别</a>
+                    </form>
+                </div>
+                <div class="row">
+                    <table class="table table-bordered">
+                        <thead><td>ID</td><td>管理员组名称</td><td>启用状态</td><td>添加时间</td><td>操作</td></thead>
+                        <?php
+                        foreach($suginfos as $info)
+                        {
+                            echo sprintf('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
+                                $info['sugid'], $info['sugname'],
+                                $ugstates[$info['sugstate']], $info['sugcreatetime'],
+                                sprintf('<a onclick="editgroupauth(%d);" href="javascript:void(0)">权限分配</a>
+                                <a style="margin:0px 10px" onclick="editgroup(%d)" href="javascript:void(0)">编辑</a>
+                            <a onclick="deletegroup(%d)" href="javascript:void(0)">删除</a>', $info['sugid'], $info['sugid'], $info['sugid'])
+                            );
+                        }
+                        ?>
+                    </table>
+                    <div class="text-center"><span class="text-center"><?php echo get_view_for_page_index($page, $pagecount, '?'.build_query(array('page'=>'%s','tab'=>'profile3')));?></span></div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div></div>
+</div>
+</div>
+
+<!--/*{{{ authUserView */-->
+<div class="modal fade bs-example-modal-lg" id="editAuthModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">管理员编辑</h4>
+            </div>
+            <div class="modal-body" id="editdetail">
+                <form id="form2">
+                    <input id="uidforauth" name="uid" type="hidden"/>
+                    <input id="type" name="type" class="submitusertype" type="hidden"/>
+                    <table class="table">
+                        <tr style="border:0px"><td class="lefttd" style="vertical-align:middle;border:0px">用户名</td>
+                            <td style="border:0px"><input id="uname" name="uname" class="form-control" placeholder="用户名"/><p class="px">*</p></td>
+                            </tr>
+                        <tr style="background-color:white;border:0px"><td class="lefttd" style="vertical-align:middle;border:0px">密码</td><td style="border:0px"><input id="upasswd" name="upasswd" class="form-control" placeholder="至少6位，数字字母组合"/><p class="px">*</p></td></tr>
+                        <tr style="border:0px"><td class="lefttd" style="vertical-align:middle;border:0px">管理员组</td><td style="border:0px">
+                                <select id="sugid" name="sugid" class="form-control"><?php unset($kvs[0]); echo OutputSelectOption($kvs,'','请选择(如没有可选管理员组，请添加管理员组)');?></select>
+                                <span style="display:none">如没有可选管理员组，请添加管理员组</span>
+                            </td></tr>
+                        <tr style="border:0px"><td class="lefttd" style="vertical-align:middle;border:0px">用户状态</td>
+                            <td style="border:0px">
+                                <label><input id="ustate0" type="radio" name="ustate" value="<?php echo STATE_NOR;?>"> 启用</label>&nbsp;&nbsp;&nbsp;&nbsp;
+                                <label><input id="ustate<?php echo STATE_OFFLINE;?>" type="radio" name="ustate" value="<?php echo STATE_OFFLINE;?>"> 锁定</label>
+                            </td></tr>
+                        <tr style="border:0px"><td class="lefttd" style="vertical-align:middle;border:0px">真实姓名</td><td style="border:0px"><input id="urealname" name="urealname" class="form-control" placeholder="真实姓名"/><p class="px">*</p></td></tr>
+                        <tr style="background-color:white;border:0px"><td class="lefttd" style="vertical-align:middle;border:0px">邮箱</td><td style="border:0px"><input id="uemail" name="uemail" class="form-control" placeholder="邮箱"/><p class="px">*</p></td></tr>
+                        <tr style="border:0px"><td class="lefttd" style="vertical-align:middle;border:0px">手机号</td><td  style="border:0px"><input id="umobile" name="umobile" class="form-control" placeholder="手机号"/><p class="px">*</p></td></tr>
+                    </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+                <button id="submitbtn" type="button" class="btn btn-primary btn-sm" onclick="submiteditauthinfo();">确定</button>
+            </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!--/*}}}*/-->
+
+<!--/*{{{ EditView */-->
+<div class="modal fade bs-example-modal-lg" id="editModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">权限类别编辑</h4>
+            </div>
+            <div class="modal-body" id="editdetail">
+                <form id="form1">
+                    <input id="sugidforauth" name="sugid" type="hidden"/>
+                    <input id="type" name="type" class="submittype" type="hidden"/>
+                    <table class="table">
+                        <tr style="border:0px"><td class="lefttd" style="vertical-align:middle;border:0px">用户组名</td><td style="border:0px"><input id="sugname" name="sugname" class="form-control" placeholder="用户组名称"/><p class="px">*</p></td></tr>
+                        <tr style="border:0px"><td class="lefttd" style="vertical-align:middle;border:0px">用户组状态</td>
+                            <td style="border:0px">
+                                <label><input id="sugstate0" type="radio" name="sugstate" value="<?php echo STATE_NOR;?>"> 启用</label>&nbsp;&nbsp;&nbsp;&nbsp;
+                                <label><input id="sugstate<?php echo STATE_OFFLINE;?>" type="radio" name="sugstate" value="<?php echo STATE_OFFLINE;?>"> 锁定</label>
+                            </td></tr>
+                        <tr style="border:0px"><td class="lefttd" style="vertical-align:middle;border:0px">说明</td><td style="border:0px">
+                                <textarea  id="sugdesc" name="sugdesc" class="form-control" style="float:left;margin-right:20px" placeholder="填写说明"></textarea>
+                            </td></tr>
+                    </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+                <button id="submitbtn" type="button" class="btn btn-primary btn-sm" onclick="submiteditinfo();">确定</button>
+            </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!--/*}}}*/-->
+
+<!--/*{{{ authView */-->
+<div class="modal fade bs-example-modal-lg" id="authModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="authLabel">权限分配</h4>
+            </div>
+            <div class="modal-body" id="editdetail">
+                <form id="form2">
+                    <input id="sugid" name="sugid" type="hidden"/>
+                    <input id="type" name="type" class="submitauthtype" type="hidden"/>
+                    <div style="height:150px">
+                        <?php
+                        foreach($funcs as $func)
+                        {
+                            echo sprintf('<div style="float:left;width:45%%"><label><input type="checkbox" id=func%d name="func%d" value="%s"> %s</label></div>', $func['id'], $func['id'], $func['id'], $func['name']);
+                        }
+                        ?>
+                    </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+                <button id="submitbtn" type="button" class="btn btn-primary btn-sm" onclick="submitfunceditinfo();">确定</button>
+            </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!--/*}}}*/-->
+
+<script>
+var tab = '';
+    /*{{{ auth */
+    function emptyauthinfo()
+    {
+        $('#uid').val('');
+        $('#uname').val('');
+        $('#upasswd').val('');
+        $('#ugroupid').val('');
+        $("input:radio[name=ustate]").removeAttr('checked');
+        $('#urealname').val('');
+        $('#uemail').val('');
+        $('#umobile').val('');
+    }
+    /* 编辑 添加 */
+    function editauth(uid)
+    {
+        emptyauthinfo();
+        if(uid > 0)
+        {
+            $('#uidforauth').val(uid);
+            //$('#uid').val(uid);
+            var type = 'getauthuserbyuid';
+            <?php
+            $params = array('type','uid');
+            echo generate_ajax($params,'getauthuserbyuidcb','/action/useraction.php');
+            ?>
+        }
+        else
+        {
+            $('#editAuthModal').modal('show');
+        }
+    }
+    /* 展示 管理员信息 */
+    function getauthuserbyuidcb(data)
+    {
+        $('#uname').val(data.result.uname);
+        $('#uidforauth').val(data.result.uid);
+        $('#upasswd').val(data.result.upasswd);
+        $('#sugid').val(data.result.sugid);
+        //$('#ustate'+data.result.ustate).attr('checked','checked');
+        document.getElementById('ustate'+data.result.ustate).checked = true; //.attr('checked','checked');
+        $('#urealname').val(data.result.urealname);
+        $('#uemail').val(data.result.uemail);
+        $('#umobile').val(data.result.umobile);
+        $('#editAuthModal').modal('show');
+    }
+    /* 提交 工作室管理员 信息 */
+    function submiteditauthinfo()
+    {
+        var uid = $('#uidforauth').val();
+        var type = 'addstudiomanageuser';
+        if(uid > 0)
+            type = 'updateauthuser';
+        $('.submitusertype').val(type);
+        var uname = $('#uname').val();
+        var urealname = $('#urealname').val();
+        var uemail = $('#uemail').val();
+        var umobile = $('#umobile').val();
+        var sugid = $('#sugid').val();
+        var ustate = $("input[name='ustate']:checked").val();
+  var upasswd = $('#upasswd').val();
+        if(checkitemnull(uname,'用户名') && checkitemnull(urealname,'真实姓名') &&checkitemnull(uemail,'邮箱')
+            && checkitemnull(umobile,'手机号'))
+        {
+            if(sugid.length > 0)
+            {
+                if(ustate != undefined)
+                {
+  if(!isPasswd(upasswd))
+  {
+    alert('密码格式不对');
+    return ;
+  }
+  if( !isEmail(uemail))
+  {
+    alert('邮箱格式不对');
+    return false;
+  }
+  if(!checkMobile(umobile))
+  {
+    alert('手机格式不对');
+    return false;
+  }
+                    <?php
+                    $params = '$("#form2").serialize()';
+                    echo generate_ajax($params, 'cb', '/action/useraction.php');
+                    ?>
+                    return false;
+                }
+                else
+                {
+                    alert('请选择用户状态');
+                    return ;
+                }
+            }
+            else
+            {
+                alert('请选择用户组');
+                return ;
+            }
+        }
+
+    }
+
+    function deleteauth(uid)
+    {
+      if(confirm('确认删除？'))
+      {
+        var type = 'deletestudiomanageinfo';
+        var ugid = uid;
+        <?php
+        $params = array('type','uid');
+        echo generate_ajax($params,'cb','/action/useraction.php');
+        ?>
+      }
+    }
+    /*}}}*/
+    /*  */
+    function checkitemnull(str, viewstr)
+    {
+        if((str!=null) && (str.length>0))
+            return true;
+        else
+        {
+            alert(viewstr+"为空");
+            return false;
+        }
+    }
+    var suginfos = <?php echo json_encode($suginfos);?>;
+    var funcinfos = <?php echo json_encode($funcs)?>;
+    /* 展示 功能 以及默认选中已有功能 */
+    function editgroupauth(sugid)
+    {
+      tab = 'profile3';
+        $('#sugid').val(sugid);
+        for(var i in funcinfos)
+        {
+            $('#func'+funcinfos[i].id).removeAttr('checked');
+        }
+        for( var i in suginfos)
+        {
+            if(suginfos[i].sugid == sugid)
+            {
+                var funcs = suginfos[i]['sugfuncinfos'];
+                for(var i in funcs)
+                {
+                    //$('#func'+funcs[i]).attr('checked','checked');
+                    document.getElementById('func'+funcs[i]).checked = true ;//.attr('checked','checked');
+                }
+                break;
+            }
+        }
+        $('#authModal').modal('show');
+    }
+    /* 添加 数据 */
+    function submitfunceditinfo()
+    {
+        var funcs = new Array();
+        for(var i in funcinfos)
+        {
+            if($('#func'+funcinfos[i].id).is(':checked'))
+                funcs.push(funcinfos[i].id);
+        }
+        var type  = 'addstudionmanagegroupauth';
+        var sugid = $('#sugid').val();
+        <?php
+        $params = array('type','sugid','funcs');
+        echo generate_ajax($params,'cb','/action/useraction.php');
+        ?>
+    }
+
+    function emptyuginfo()
+    {
+        $('#sugidforauth').val('');
+        $('#sugname').val('');
+        $("input:radio[name=sugstate]").removeAttr('checked');
+        $('#sugdesc').val('');
+    }
+
+    function editgroup(sugid)
+    {
+        tab = 'profile3';
+        emptyuginfo();
+        if(sugid > 0)
+        {
+            var type = 'getstudiogroupinfobysugid';
+            <?php
+            $params = array('type','sugid');
+            echo generate_ajax($params,'getgroupinfobyugidcb','/action/useraction.php');
+            ?>
+        }
+        else
+        {
+            $('#editModal').modal('show');
+        }
+    }
+
+    function getgroupinfobyugidcb(data)
+    {
+        $('#sugidforauth').val(data.result.sugid);
+        $('#sugname').val(data.result.sugname);
+        $("input:radio[name=sugstate]").removeAttr('checked');
+        //$('#sugstate'+data.result.sugstate).attr('checked','checked');
+        document.getElementById('sugstate'+data.result.sugstate).checked = true;//attr('checked','checked');
+        $('#sugdesc').val(data.result.sugdesc);
+        $('#editModal').modal('show');
+    }
+
+    function submiteditinfo()
+    {
+        var sugid = $('#sugidforauth').val();
+        var type = 'addstudiousergroupinfo';
+        if(sugid > 0)
+            type = 'updatestudiousergroupinfo';
+
+        $('.submittype').val(type);
+        <?php
+        $params = '$("#form1").serialize()';
+        echo generate_ajax($params, 'cb', '/action/useraction.php');
+        ?>
+        return false;
+    }
+
+    function deletegroup(id)
+    {
+      if(confirm('确认删除？'))
+      {
+        tab = 'profile3';
+        var type = 'deletestudiousergroupinfo';
+        var sugid = id;
+        <?php
+        $params = array('type','sugid');
+        echo generate_ajax($params,'cb','/action/useraction.php');
+        ?>
+      }
+    }
+
+    function cb(data)
+    {
+  window.location.href="studiomanage.html?tab="+tab;
+    }
+</script>
+<script>
+function isEmail(str){ 
+  var reg = /^([a-zA-Z0-9_-])+@([a-zA-Z0-9_-])+(.[a-zA-Z0-9_-]){2,}/; 
+  return reg.test(str); 
+} 
+
+function checkMobile(m){
+  var sMobile = m;
+  if(!(/^1[3|4|5|7|8][0-9]\d{4,8}$/.test(sMobile))){
+    return false;
+  }
+  return true;
+}
+
+//校验密码：只能输入至少6个字母、数字、下划线
+function isPasswd(s)
+{
+  if(s.length >= 6)
+  {
+    var patrn=/^(?![a-zA-z]+$)(?!\d+$)(?![!@#$%^&*]+$)[a-zA-Z\d!@#$%^&*]+$/;
+    if (!patrn.exec(s)) return false
+    return true
+  }
+  else
+  {
+    return false;
+  }
+}
+
+  <?php if(!empty($tab)){ ?>
+    $('#<?php echo $tab;?>a').trigger('click');
+  <?php } ?>
+  </script>
+</body>
+</html>

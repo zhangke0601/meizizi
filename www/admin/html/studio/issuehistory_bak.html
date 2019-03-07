@@ -1,0 +1,107 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+require_once($base_dir.'model/clsCartoonSectioninfos.php');
+require_once($base_dir.'model/clsPlatforminfos.php');
+$title = '';
+$nav = 'index';
+require_once($base_dir.'www/admin/html/studio/head.html');
+
+$title = '漫画发布历史';
+$cart = new Cartooninfos();
+$sect = new CartoonSectioninfos();
+$platform = new Platforminfos();
+$ctid = intval(GetItemFromArray($_GET,'ctid'));
+$ctinfo = $cart->find($ctid);
+$pfinfos = $platform->getinfos();
+$pfinfos = SetKeyFromArray($pfinfos,'pfid');
+
+$ctrrinfos = $cart->GetReleaseRecordInfosByCtid($ctid);
+foreach($ctrrinfos as $idx=>$info)
+{
+  $ctsinfo = $sect->find($info['ctsid']);
+  $ctrrinfos[$idx]['ctsinfo'] = $ctsinfo;
+  $ctrrinfos[$idx]['pfinfo'] = $pfinfos[$info['pfid']];
+}
+
+?>
+<div class="container" style="background-color:white">
+    <div class="row" >
+      <div style="line-height:40px;font-size:25px"><?php echo $ctinfo['ctname'];?></div>
+    </div>
+    <div class="row" style="">
+             <a href="index.html" class="btn btn-primary btn-sm pull-right">返回</a>
+    </div>
+    <div class="row">
+        <table class="table" style="display:none">
+            <thead><td>发布章节</td><td>发布平台以及状态</td><td>时间</td></thead>
+            <tr><td><a onclick="issuesection()">查看详情</a></td><td><a onclick="issueplatform()">查看详情</a></td><td>2017-10-11 00:00:00</td></tr>
+            <tr><td><a onclick="issuesection()">查看详情</a></td><td><a onclick="issueplatform()">查看详情</a></td><td>2017-10-11 00:00:00</td></tr>
+        </table>
+
+        <table class="table">
+          <thead><td>ID</td><td>章节</td><td>平台</td><td>状态</td><td>时间</td></thead>
+        <?php
+          if(count($ctrrinfos) > 0){
+            foreach($ctrrinfos as $info)
+            {
+              echo sprintf('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
+                $info['ctrrid'], $info['ctsinfo']['ctsname'],$info['pfinfo']['pfname'],$releasestates[$info['ctrrstate']],$info['ctrrcreatetime']);
+            }
+          }
+          else
+          {
+            echo sprintf("<tr><td colspan='5' style='text-align:center'>无记录</td></tr>");
+          }
+        ?>
+        </table>
+    </div>
+</div>
+<div class="modal fade bs-example-modal-lg" id="issuesectioninfo" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">发布章节</h4>
+            </div>
+            <div class="modal-body" id="editdetail">
+                <div>第一章:<span >测试章节</span></div>
+                <div>第二章:<span >测试章节</span></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade bs-example-modal-lg" id="issueplatforminfo" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel2">发布章节</h4>
+            </div>
+            <div class="modal-body" id="editdetail2">
+                <table class="table">
+                    <tr><td>腾讯</td><td>发布成功</td><td>作品链接</td><td>https://www.baidu.com</td></tr>
+                    <tr><td>百度</td><td>审核中</td><td>作品链接</td><td>https://www.baidu.com</td></tr>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+<script>
+    function issuesection()
+    {
+        $('#issuesectioninfo').modal('show');
+    }
+    function issueplatform()
+    {
+        $('#issueplatforminfo').modal('show');
+    }
+</script>
+</html>

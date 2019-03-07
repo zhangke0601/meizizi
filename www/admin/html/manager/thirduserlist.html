@@ -1,0 +1,486 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+require_once($base_dir.'model/clsCartoonSectioninfos.php');
+require_once($base_dir.'model/clsThirduserinfos.php');
+$title = '第三方用户';
+$nav = 'thirduserlist';
+require_once($base_dir.'www/admin/html/manager/head.html');
+
+$p = GetItemFromArray($_GET,'p');
+$s = GetItemFromArray($_GET,'s');
+$tu = new Thirduserinfos();
+list($totalcount,$tuinfos) = $tu->GetListByParam($p,$s);
+$pagecount = ceil($totalcount/COUNT_PER_PAGE);
+?>
+
+<div class="container" style="background-color:white">
+  <div class="row" style="height:35px;"> <!--style="display:none"-->
+    <form>
+      <input id="s" name="s" placeholder="输入公告标题查询" class="form-control" style="width:200px;float:left;margin-right:10px;display:none" value="<?php echo $s;?>"/>
+      <input type="submit" class="btn btn-default " value="查询" style="display:none">
+      <a class="btn btn-primary btn-sm pull-right" onclick="editthirduser(0);">增加用户</a>
+      <a class="btn btn-primary btn-sm pull-right" style="margin-right:40px" onclick="editqudaodesc();">设置渠道说明</a>
+    </form>
+  </div>
+
+  <div class="row">
+    <table class="table table-bordered">
+      <thead><td>ID</td><td>渠道名</td><td>授权截止时间</td><td>accessToken</td><td>描述</td><td>操作</td><td>创建时间</td></thead>
+    <?php
+      foreach($tuinfos as $info)
+      {
+           echo sprintf('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
+          $info['tuid'],$info['tuname'],$info['tuauthenddate'],
+          $info['tuaccesstoken'],$info['tudesc'],
+          sprintf('<a href="javascript:void(0)" style="cursor:pointer;display:none" onclick="editauth(%d);">授权</a>&nbsp;&nbsp;  
+            <a href="javascript:void(0)" style="cursor:pointer;" onclick="editthirduser(%d);">编辑</a>
+            <a href="javascript:void(0)" style="cursor:pointer;margin:0px 10px;" onclick="deletethirduser(%d);">删除</a>', $info['tuid'], $info['tuid'], $info['tuid']),
+          $info['tucreatetime']);
+      }
+    ?>
+    </table>
+    <div class="text-center">
+      <span class="text-center">
+        <?php echo get_view_for_page_index($p,$pagecount,'?p=%s');?>
+      </span>
+    </div>
+  </div>
+</div>
+    </div>
+  </div>
+  
+<div class="modal fade " id="thirduserModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe2">第三方编辑</h4>
+      </div>
+      <div class="modal-body" id="editdetai">
+        <input type='hidden' id="tuid" value="" />
+        <table class="table">
+          <tr><td style="width:100px">姓名</td><td><input class="form-control" id="tuname" /></td></tr>
+          <tr><td style="width:100px">授权截止时间</td><td><input class="form-control" id="tuauthenddate"  onclick="WdatePicker({ dateFmt: 'yyyy-MM-dd' })" data-date-format="yyyy-mm-dd" /></td></tr>
+          <tr style="display:none"><td style="width:100px">授权状态</td><td><select id="tuauthstate"><?php echo OutputSelectOption($tuauthstates,'0');?></select></td></tr>
+          <tr><td style="width:100px">accessToken</td><td><input class="form-control" id="tuaccesstoken" readonly style="width:300px;display:initial;margin-right:10px" /><a class="btn btn-default" onclick="gettoken()">获取TOKEN</a></td></tr>
+          <tr><td style="">描述</td><td><textarea class="form-control" id="tudesc" name="tudesc"></textarea></td></tr>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" >取消</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="savethirduser();">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade " id="authModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe2">作品授权</h4>
+      </div>
+      <div class="modal-body" id="editdetai">
+        <input type='hidden' id="autuid" value="" />
+        <div class="row">
+          <div class="col-sm-5" style="">
+            <div><input id="key" name="key" onchange="searchkey()" class="form-control" placeholder="请输入关键词检索"></div>
+            <div style="overflow-y:auto;height:300px;background-color:#ddd;padding:5px" id="allct"></div>
+          </div>
+          <div class="col-sm-2" style="height:300px;text-align:center;padding:0px">
+            <a class="btn btn-primary btn-sm" style="margin-top:100px" onclick="toright();">自动添加&gt;</a>
+            <a class="btn btn-primary btn-sm" style="margin-top:20px" onclick="torighthand();">手工添加&gt;</a>
+            <a class="btn btn-primary btn-sm" style="margin-top:20px" onclick="deletetucid();">&lt;删除</a>
+          </div>
+          <div class="col-sm-5" style="">
+            <div style="text-align:center"><a class="btn btn-primary btn-sm" onclick="editsection();">编辑章节</a></div>
+            <div style="overflow-y:auto;height:300px;background-color:#ddd;padding:5px" id="selectedct"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" >取消</button>
+        <button type="button" class="btn btn-primary btn-sm" data-dismiss="modal" >保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal fade " id="sectionselectModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe2">作品章节选择</h4>
+      </div>
+      <div class="modal-body" id="editdetai">
+        <input type='hidden' id="autuid" value="" />
+        <div class="row" id="sectlist">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" >取消</button>
+        <button type="button" class="btn btn-primary btn-sm"  onclick="torighthand2();" >保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade " id="sectioneditModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe2">作品章节选择</h4>
+      </div>
+      <div class="modal-body" id="editdetai">
+        <input type='hidden' id="autuid" value="" />
+        <div class="row" id="secteditlist">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" >取消</button>
+        <button type="button" class="btn btn-primary btn-sm"  onclick="torighthand3();" >保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade " id="editqudaodescModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog " role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="myModalLabe2">渠道说明编辑</h4>
+      </div>
+      <div class="modal-body" id="editdetai">
+        <div class="row" id="secteditlist">
+          <textarea id="qudaodesc" class="form-control"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default btn-sm" data-dismiss="modal" >取消</button>
+        <button type="button" class="btn btn-primary btn-sm"  onclick="savequdaodesc();" >保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function emptyinfo()
+{
+  $('#tuid').val('');
+  $('#tuauthstate').val('0');
+  $('#tuaccesstoken').val('');
+}
+
+function editthirduser(tuid)
+{
+  emptyinfo();
+  if(tuid == 0){
+    $('#thirduserModal').modal('show');
+  }else{
+    var type = 'getthirduserinfobytuid';
+    <?php
+    $params = array('type','tuid');
+    echo generate_ajax($params,'getthirdusercb','/action/funcaction.php');
+    ?>
+  }
+}
+
+function getthirdusercb(data){
+  $('#tuid').val(data.result.tuid);
+  $('#tuname').val(data.result.tuname);
+  $('#tuauthenddate').val(data.result.tuauthenddate);
+  $('#tuauthstate').val(data.result.tuauthstate);
+  $('#tuaccesstoken').val(data.result.tuaccesstoken);
+  $('#tudesc').val(data.result.tudesc);
+  $('#thirduserModal').modal('show');
+}
+
+function savethirduser(){
+  var tuid = $('#tuid').val();
+  var tuname = $('#tuname').val();
+  var tuauthenddate= $('#tuauthenddate').val();
+  var tuauthstate = $('#tuauthstate').val();
+  var tuaccesstoken = $('#tuaccesstoken').val();
+  var tudesc = $('#tudesc').val();
+  var type = 'addthirduser';
+  if(tuid.length > 0)
+    type = 'updatethirduser';
+  if((tuname.length>0)&&(tuaccesstoken.length)){
+    <?php
+    $params = array('type','tuid','tuname', 'tuauthenddate', 'tuauthstate','tudesc','tuaccesstoken');
+    echo generate_ajax($params,'cb','/action/funcaction.php');
+    ?>
+  }else{
+    alert('请填写完整');
+  }
+}
+
+function gettoken(){
+  var type = 'getaccesstoken';
+  var name = $('#tuname').val();
+  <?php
+    $params = array('type','name');
+    echo generate_ajax($params,'gettokencb','/action/funcaction.php');
+  ?>
+}
+
+function gettokencb(data){
+  $('#tuaccesstoken').val(data.result);
+}
+
+function deletethirduser(tuid)
+{
+  if(confirm('确认删除')){
+    var type = 'deletethirduser';
+    <?php
+    $params = array('type','tuid');
+    echo generate_ajax($params,'cb','/action/funcaction.php');
+    ?>
+  }
+}
+function cb(data)
+{
+  window.location.reload();
+}
+
+function editauth(tuid){
+  $('#autuid').val(tuid);
+
+  var type = 'getcartooninfosforthirduser';
+  <?php
+  $params = array('type','tuid');
+  echo generate_ajax($params,'getctinfosbythidcb','/action/funcaction.php');
+  ?>
+}
+
+function getctinfosbythidcb(data){
+  $('#key').val('');
+  $('#allct').html('');
+  $('#selectedct').html('');
+  for(var i in data.result){
+    var ht = '<div class="rightselected" data-type="'+data.result[i].tuctype+'" id="seltucid_'+data.result[i].tucid+'" onclick="selectright('+data.result[i].tucid+')">';
+    if(data.result[i].tuctype == 0)
+      ht += '自动&nbsp;';
+    else if(data.result[i].tuctype == 5)
+      ht += '手工&nbsp;';
+    ht += data.result[i].ctinfo.ctname;
+    ht += '</div>';
+    $('#selectedct').append(ht);
+  }
+  $('#authModal').modal('show');
+}
+
+var rightselected = 0;
+function selectright(tucid){
+  $('.rightselected').css('background-color',"unset");
+  $('#seltucid_'+tucid).css('background-color','green');
+  rightselected = tucid;
+}
+
+function searchkey(){
+  var key = $('#key').val();
+  var type = 'getcartooninfosbykey';
+  var tuid = $('#autuid').val();
+  <?php
+  $params = array('type','key', 'tuid');
+  echo generate_ajax($params,'searchkeycb','/action/cartoonaction.php');
+  ?>
+}
+
+function searchkeycb(data){
+  $('#allct').html('');
+  for(var i in data.result){
+    var ht = '<div class="searchct" onclick="select('+data.result[i].ctid+')" id="ctid_'+data.result[i].ctid+'">'+data.result[i].ctname+'</div>';
+    $('#allct').append(ht);
+  }
+}
+
+var leftselected = 0;
+function select(ctid){
+  leftselected = ctid;
+  $('.searchct').css('background-color','unset');
+  $('#ctid_'+ctid).css('background-color','green');
+}
+
+function toright(){
+  if(leftselected > 0){
+    var type = 'addcartoonforthirduser';
+    var tuid = $('#autuid').val();
+    var ctid = leftselected;
+    var tucsectionlist = '';
+    var tuctype = 0;
+    <?php
+      $params = array('type','tuid','ctid','tucsectionlist','tuctype');
+      echo generate_ajax($params,'torightcb','/action/funcaction.php');
+    ?>
+    leftselected = 0;
+    $('#ctid_'+leftselected).hide();
+  }else{
+    alert('请选择作品');
+  }
+}
+
+function torightcb(data){
+  var tucid = data.result.tucid;
+  var ctid = data.result.ctid;
+  var ht = '<div class="rightselected" data-type="5" id="seltucid_'+tucid+'" onclick="selectright('+tucid+')">';
+  ht += '自动&nbsp;';
+  ht += $('#ctid_'+ctid).html();
+  ht += '</div>';
+  $('#selectedct').append(ht);
+  $('#ctid_'+ctid).hide();
+}
+
+function torighthand(){
+  if(leftselected > 0){
+    var ctid = leftselected;
+    var type = 'getsectioninfosbyctid';
+    <?php
+    $params = array('type','ctid');
+    echo generate_ajax($params,'getsectioninfosbyctidcb','/action/cartoonaction.php');
+    ?>
+  }
+}
+
+function getsectioninfosbyctidcb(data){
+  $('#sectlist').html('');
+  for(var i in data.result.ctsinfos){
+    var ht = '<div><label><input class="ctsinput" data-ctsid="'+data.result.ctsinfos[i].ctsid+'" id="cts_'+data.result.ctsinfos[i].ctsid+'" type="checkbox"> '+data.result.ctsinfos[i].ctsname+'</label></div>';
+    $('#sectlist').append(ht);
+  }
+  $('#sectionselectModal').modal('show');
+}
+
+function torighthand2(){
+  var type = 'addcartoonforthirduser';
+  var tuid = $('#autuid').val();
+  var ctid = leftselected;
+  var tucsectionlist = '';
+  var list = new Array();
+  $('.ctsinput').each(function(){
+    if(this.checked){
+      var ctsid = $(this).attr('data-ctsid');
+      list.push(ctsid)
+    }
+  });
+  tucsectionlist = JSON.stringify(list);
+  var tuctype = 5;
+  <?php
+    $params = array('type','tuid','ctid','tucsectionlist','tuctype');
+    echo generate_ajax($params,'torighthandcb','/action/funcaction.php');
+  ?>
+  leftselected = 0;
+  $('#ctid_'+leftselected).hide();
+  $('#sectionselectModal').modal('hide');
+}
+
+function torighthandcb(data){
+  var tucid = data.result.tucid;
+  var ctid = data.result.ctid;
+  var ht = '<div class="rightselected" data-type="5" id="seltucid_'+tucid+'" onclick="selectright('+tucid+')">';
+  ht += '手工&nbsp;';
+  ht += $('#ctid_'+ctid).html();
+  ht += '</div>';
+  $('#selectedct').append(ht);
+  $('#ctid_'+ctid).hide();
+}
+
+function deletetucid(){
+  var tucid = rightselected;
+  if(tucid > 0){
+    if(confirm('确认删除？')){
+    var type = 'deletetucinfobytucid';
+    <?php
+      $params = array('type','tucid');
+      echo generate_ajax($params,'deletetucidcb','/action/funcaction.php');
+    ?>
+    }
+  }
+}
+
+function deletetucidcb(data){
+  $('#seltucid_'+rightselected).hide();
+  rightselected = 0;
+}
+
+function editsection(){
+  if(rightselected > 0){
+    var ty = $('#seltucid_'+rightselected).attr('data-type');
+    if(ty == 5){
+      var tuid = $('#autuid').val();
+      var type = 'gettucinfobytucid';
+      var tucid = rightselected;
+      <?php
+        $params = array('type','tucid');
+        echo generate_ajax($params,'editsectioncb','/action/funcaction.php');
+      ?>
+    }else{
+      alert('该作品是自动的不能编辑');
+    }
+  }
+}
+
+function editsectioncb(data){
+  $('#secteditlist').html('');
+  for(var i in data.result.ctsinfos){
+    var checked = '';
+    if(data.result.tucinfo.tucsectionlist.indexOf(data.result.ctsinfos[i].ctsid) !== -1)
+      checked = 'checked';
+    var ht = '<div><label><input '+checked+' class="ctseditinput" data-ctsid="'+data.result.ctsinfos[i].ctsid+'" id="cts_'+data.result.ctsinfos[i].ctsid+'" type="checkbox"> '+data.result.ctsinfos[i].ctsname+'</label></div>';
+    $('#secteditlist').append(ht);
+  }
+  $('#sectioneditModal').modal('show');
+}
+
+function torighthand3(){
+  var type = 'updatecartoonforthirduser';
+  var tucid = rightselected;
+  var tucsectionlist = '';
+  var list = new Array();
+  $('.ctseditinput').each(function(){
+    if(this.checked){
+      var ctsid = $(this).attr('data-ctsid');
+      list.push(ctsid)
+    }
+  });
+  tucsectionlist = JSON.stringify(list);
+  <?php
+    $params = array('type','tucid','tucsectionlist');
+    echo generate_ajax($params,'torighthand3cb','/action/funcaction.php');
+  ?>
+  $('#sectioneditModal').modal('hide');
+}
+
+function torighthand3cb(data){
+}
+
+function editqudaodesc(){
+  var type = 'getqudaodesc';
+  <?php
+    $params = array('type');
+    echo generate_ajax($params,'qudaodesccb','/action/funcaction.php');
+  ?>
+}
+
+function qudaodesccb(data){
+  $('#qudaodesc').val(data.result);
+  $('#editqudaodescModal').modal('show');
+}
+
+function savequdaodesc(){
+  var type = 'savequdaodesc';
+  var qudaodesc = $('#qudaodesc').val();
+  <?php
+    $params = array('type', 'qudaodesc');
+    echo generate_ajax($params,'cb','/action/funcaction.php');
+  ?>
+}
+
+</script>
+</body>
+</html>

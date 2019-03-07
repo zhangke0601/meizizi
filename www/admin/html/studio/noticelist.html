@@ -1,0 +1,37 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+require_once($base_dir.'model/clsCartoonSectioninfos.php');
+$title = '公告';
+$nav = 'gonggao';
+require_once($base_dir.'www/admin/html/studio/head.html');
+
+
+?>
+
+<div class="container" style="background-color:white">
+  <div class="row" >
+    <div style="line-height:40px;font-size:25px">公告</div>
+  </div>
+  <div class="row" style="">
+  </div>
+  <div class="row">
+    <table class="table">
+      <thead><td>ID</td><td>名称</td><td>添加时间</td></thead>
+    <?php
+      foreach($ninfos as $info)
+      {
+        echo sprintf("<tr><td>%s</td><td>%s</td><td>%s</td></tr>",
+           $info['nid'], ($info['uanstate']==0)?sprintf("<a href='noticeinfo.html?uanid=%d'><strong>%s</strong></a>",$info['uanid'],$info['ntitle']):sprintf('<a href="noticeinfo.html?uanid=%d">%s</a>',$info['uanid'],$info['ntitle']),
+           $info['ncreatetime']
+        );
+      }
+    ?>
+    </table>
+  </div>
+</div>
+
+
+
+</body>
+</html>

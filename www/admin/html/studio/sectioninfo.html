@@ -1,0 +1,1257 @@
+<?php
+$base_dir = dirname(__FILE__).'/../../../../';
+require_once($base_dir.'model/clsCartooninfos.php');
+require_once($base_dir.'model/clsCartoonSectioninfos.php');
+require_once($base_dir.'model/clsPlatforminfos.php');
+$nav = 'index';
+
+$title = '漫画章节编辑';
+$pf = new Platforminfos();
+$cart = new Cartooninfos();
+$sect = new CartoonSectioninfos();
+$ctid = intval(GetItemFromArray($_GET,'ctid'));
+$ctsid = intval(GetItemFromArray($_GET,'ctsid'));
+$pfid  = intval(GetItemFromArray($_GET,'pfid'));
+$getpfid = $pfid;
+$ctinfo = $cart->find($ctid);
+$ctsinfo = $sect->find($ctsid);
+$type = 'addsectionforcartoon';
+$copy = 0;
+$ctstailframeinfos = array();
+if($ctsid > 0)
+{
+  $type = 'updatesectionforcartoon';
+  if($pfid > 0)
+    $copy = 1;
+  if(($pfid>0) && ($ctsinfo['ctsparentid']==0))
+  {
+    $nctsinfo = $sect->GetSectInfoByCtsidAndPfid($ctsid, $pfid);
+    if(empty($nctsinfo))
+    {
+      unset($ctsinfo['ctsid']);
+      unset($ctsinfo['ctscreatetime']);
+      unset($ctsinfo['ctsupdatetime']);
+      $ctsinfo['ctssource'] = $pfid;
+      $ctsinfo['ctssourceid'] = '';
+      $ctsinfo['ctsstate'] = 0;
+      $ctsinfo['ctsparentid'] = $ctsid;
+      $nctsid = $sect->add($ctsinfo);
+      $nctsinfo = $sect->find($nctsid);
+    }
+    $ctsinfo = $nctsinfo;
+  }
+}
+if($ctsinfo){
+  if(!empty($ctsinfo['ctstailframeinfos']))
+    $ctstailframeinfos = json_decode($ctsinfo['ctstailframeinfos'], true);
+}
+$ctsstate = GetItemFromArray($ctsinfo, 'ctsstate');
+
+$carttypes = GetKeyAndValueFromArray($cart->GetTypeInfos(),'cttpid','cttpname');
+$carttags = GetKeyAndValueFromArray($cart->GetTagInfos(),'cttid','cttname');
+
+require_once($base_dir.'www/admin/html/studio/head.html');
+
+
+$pfinfos = $pf->getinfos('pfstate=0');
+$upfinfos = array();
+foreach($pfinfos as $idx=>$pfinfo)
+{
+  $upfinfo = $pf->existUserAndPlatform($uid,$pfinfo['pfid']);
+  if($upfinfo)
+  {
+    $upfinfo['pfinfo'] = $pfinfo;
+    $upfinfos[] = $upfinfo;
+  }
+}
+$pfinfos = SetKeyFromArray($pfinfos,'pfid');
+$upfinfos = SetKeyFromArray($upfinfos,'pfid');
+
+
+$platformcoversizeinfos = array(
+//array('pfid'=>1,'name'=>'掌阅','size'=>'600*800','width'=>'600','heigth'=>'800'),
+//array('pfid'=>2,'name'=>'快看','size'=>'1280*720','width'=>'1280','heigth'=>'720', 'format'=>'png'),
+array('pfid'=>3,'name'=>'漫画岛','size'=>'750*422','width'=>'750','heigth'=>'422'),
+//array('pfid'=>4,'name'=>'布卡','size'=>'430*570','width'=>'','heigth'=>''),
+array('pfid'=>5,'name'=>'腾讯','size'=>'750*440','width'=>'750','heigth'=>'440'),
+array('pfid'=>2,'name'=>'快看','size'=>'1280*720','width'=>'1280','heigth'=>'720', 'format'=>'png'),
+//array('pfid'=>6,'name'=>'爱奇艺','size'=>'300*400','width'=>'300','heigth'=>'400'),
+//array('pfid'=>7,'name'=>'网易','size'=>'300*420','width'=>'300','heigth'=>'420'),
+//array('pfid'=>8,'name'=>'有妖气','size'=>'635*835','width'=>'635','heigth'=>'835')
+);
+
+$platforminfos = array(
+//array('pfid'=>1,'name'=>'掌阅'),
+//array('pfid'=>2,'name'=>'快看'),
+array('pfid'=>3,'name'=>'漫画岛'),
+array('pfid'=>5,'name'=>'腾讯'),
+//array('pfid'=>6,'name'=>'爱奇艺'),
+//array('pfid'=>7,'name'=>'网易'),
+//array('pfid'=>8,'name'=>'有妖气')
+);
+foreach($platformcoversizeinfos as $idx=>$row)
+{
+  if(!isset($upfinfos[$row['pfid']]))
+  {
+    unset($platformcoversizeinfos[$idx]);
+  }
+}
+$platformcoversizeinfos = array_values($platformcoversizeinfos);
+
+$tailplatforminfos = array();
+foreach($sources as $pfid=>$name){
+  if(isset($upfinfos[$row['pfid']])){
+    $tailplatforminfos[$pfid] = $name;
+  }
+}
+
+
+foreach($platforminfos as $idx=>$row)
+{
+  if(!isset($upfinfos[$row['pfid']]))
+  {
+    unset($platforminfos[$idx]);
+  }
+}
+$platforminfos = array_values($platforminfos);
+
+$speplatforminfos = array(
+  array('pfid'=>SOURCE_TENCENT,'name'=>'腾讯'),
+  array('pfid'=>SOURCE_KUAIKAN,'name'=>'快看'),
+);
+
+
+?>
+<style>
+.form-control{background-color:#f4f4f4}
+.table thead>tr>th, .table tbody>tr>th, .table tfoot>tr>th, .table thead>tr>td, .table tbody>tr>td, .table tfoot>tr>td{
+  border-top:0px
+}
+.lefttd{
+  text-align:right;
+}
+.form-control{border-radius:5px; }
+.px{
+  float: right;
+  margin-top: -24px;
+  margin-right: -7px;
+  color: red;
+}
+ul{
+  list-style: none;
+}
+.floatl{
+  float: left;
+  margin-right:15px;
+}
+table tr{border:0px}
+table tr input[class~=form-control] {width:400px!important}
+</style>
+<div class="container" style="height:64px;font-size:17px;margin-top:20px;margin-bottom:10px;min-height:64px">
+ <div class="row" style="line-height:64px;margin:0px 0px 0px 10px;color:#323232">
+    <?php echo $ctinfo['ctname'];?>&nbsp;&nbsp;<small>编辑漫画章节</small>
+ </div>
+</div>
+
+<div class="container">
+  <form id="submit">
+    <input type='hidden' id="type" name="type" value="<?php echo $type;?>"/>
+    <input type='hidden' id="ctid" name="ctid" value="<?php echo $ctid;?>"/>
+    <input type='hidden' id="ctsid" name="ctsid" value="<?php echo $ctsid;?>"/>
+    <input type="hidden" id="ctsplatformcoverinfos" name="ctsplatformcoverinfos" value="<?php echo GetItemFromArray($ctsinfo,'ctsplatformcoverinfos');?>"/>
+    <input type="hidden" id="specversions" name="specversions"/>
+    <input type="hidden" id="ctstailframeinfos" name="ctstailframeinfos"/>
+
+  <div class="row " align="center" style=";margin-left:50px;margin-right:50px;margin-top:20px">
+    <table class="table">
+      <tr><td style="width:200px" class="lefttd">章节名称:</td><td><input id="ctsname" name="ctsname" class="form-control easyui-validatebox " value="<?php echo GetItemFromArray($ctsinfo,'ctsname');?>" placeholder='请输入作品章节名称' /><p class="px">*</p></td></tr>
+      <tr style="background:white"><td  class="lefttd">章节排序:</td><td><input id="ctssort" name="ctssort" class="form-control" value="<?php echo GetItemFromArray($ctsinfo,'ctssort');?>" placeholder='请输入作品章节排序' /><p class="px">*</p></td></tr>
+      <tr style="background:#f4f4f4"><td  class="lefttd">显示状态:</td><td style="text-align:left"><label><input type="radio" id="ctsstate0" name="ctsstate" value="0" <?php if(empty($ctsstate)) {echo 'checked';} ?> />&nbsp;禁用</label>&nbsp;&nbsp;&nbsp;&nbsp;
+          <label><input type="radio" id="ctsstate40" name="ctsstate" value="40" <?php if(GetItemFromArray($ctsinfo,'ctsstate')==STATE_ONLINE) echo 'checked';?> />&nbsp;启用</label></td></tr>
+      <tr><td  class="lefttd">VIP:</td><td style="text-align:left"><label><input type="radio" id="ctsvip0" name="ctsvip" value="0" <?php if(empty($ctsvip)) {echo 'checked';} ?> />&nbsp;非VIP</label>&nbsp;&nbsp;&nbsp;&nbsp;
+          <label><input onclick="clickvip();" type="radio" id="ctsvip5" name="ctsvip" value="5" <?php if(GetItemFromArray($ctsinfo,'ctsvip')==5) echo 'checked';?> />&nbsp;VIP <small>(作品开始计费必须和所有平台商务沟通才能保证计费成功)</small></label></td></tr>
+            <input type="file" id="cover" style="display:none" onchange="uploadimage(this);"/>
+      <tr><td style="height:222px"  class="lefttd">章节封面:</td><td><div style="width:140px;height:182px;text-align:center;background-color:#f4f4f4;margin-bottom:10px" onclick="$('#cover').trigger('click');">
+            <input type="hidden" id="ctscover" name="ctscover" value="<?php echo GetItemFromArray($ctsinfo,'ctscover');?>"/>
+            <?php if(strlen(GetItemFromArray($ctsinfo,'ctscover'))==0) { ?>
+            <div id="coverdiv" style="padding-top:50px"><img src="/assets/images/button_add.png" style="margin-bottom:10px"/><br>添加封面</div>
+            <img id="coverimg" src="" style="display:none;width:140px;height:182px"/>
+            <?php } else {?>
+            <img id="coverimg" src="<?php echo GetItemFromArray($ctsinfo,'ctscover').'-origin';?>" style="width:140px;height:182px"/>
+            <?php } ?>
+          </div><span id="covertip"></span>
+          <a class="btn btn-default btn-sm" onclick="cutcover();">封面截取</a>
+          <span style="color:gray">注：如上传快看、漫画岛和腾讯，请截图封面</span>
+          </td></tr>
+      <tr><td  class="lefttd" style="vertical-align:top!important;padding-top:23px">内容图片:</td><td>
+          <div style="height:50px;background-color:#f4f4f4">
+            <input id="ctscontent" name="ctscontent" type='hidden' value='<?php echo GetItemFromArray($ctsinfo,'ctscontent');?>' />
+            <input type="file" id="sectionimg" onchange="uploadimage(this)" style="display:none"  multiple="multiple" />
+            <img src="/assets/images/button_add.png" style="width:30px;margin:10px 10px" onclick="addsectionimg(); "/>
+            <input type="file" id="sectionimgcut" onchange="uploadcutimage(this)" style="display:none" accept="image/*" />
+            <a class="btn btn-primary btn-sm" onclick="addsectionimgcut();">截图上传</a>
+            <input type="file" id="sectionimgbefore" onchange="uploadimage(this)" style="display:none" accept="image/*" />
+            <a class="btn btn-primary btn-sm" onclick="addsectionbeforeimg();">前面插入图片</a>
+            <a class="btn btn-primary btn-sm" onclick="preview();">预览</a>
+            <span id="tip"></span>
+            <span style="margin-left:100px;color:red"><?php if($copy > 0) echo $pfinfos[$getpfid]['pfname'];?></span>
+            <div style="float:right;margin:10px 20px">
+              <a class="btn btn-primary btn-sm" style="margin-right:5px" onclick="downsectionimgs();">下载</a>
+              <label style="margin-right:5px"><input type="checkbox"  onclick="allclick(this);" />&nbsp;全选</label>
+              <i class="icon-trash" style="font-size:20px" onclick="deleteselected();"></i>
+            </div>
+          </div>
+          <div class="row" id="sectionlist" style="height:400px;border:1px solid #f4f4f4;">
+            <?php
+              $ctscontent = GetItemFromArray($ctsinfo,'ctscontent');
+              $imgs = array();
+              if(strlen($ctscontent) > 0)
+              {
+                $imgs = json_decode($ctscontent, true);
+                foreach($imgs as $idx=>$img)
+                {
+                  //$img = json_decode($img, true);
+                  //echo sprintf('<img src="%s" style="width:100px;height:150px"/>', $img['imgurl']);
+                  echo sprintf('<div class="col-md-2" style="float:left;text-align:center">
+                    <img src="%s" style="width:100px;height:150px;display:block" id="imgid%d" class="imgid" onmouseover="mouseoverfunc(%d)" />
+                    <div style="overflow: hidden;text-overflow: ellipsis;white-space: nowrap;">%s</div>
+                    <input id="imginput%d" type="checkbox" class="imginput" value="%s" /></div>', $img['imgurl'].'-origin', $idx,$idx , isset($img['filename'])?$img['filename']:'',$idx, $idx);
+                  }
+              }
+            ?>
+          </div>
+        </td></tr>
+        <?php if($copy == 0) {?>
+        <tr>
+          <td class="lefttd">尾桢</td>
+          <td><a onclick="opentail();" class="btn btn-default btn-sm">尾桢编辑</a></td>
+        </tr>
+        <?php } ?>
+      <tr><td style="text-align:center" colspan=2>
+          <a href="sectionlist.html?ctid=<?php echo $ctid;?>" style="width:100px" class="btn btn-default btn-sm">取消</a>
+          <a style="width:100px;margin-left:20px" class="btn btn-primary btn-sm" onclick="return submit();">确定</a></td></tr>
+    </table>
+  </div>
+  </form>
+</div>
+
+<!-- 预览 -->
+<div class="modal fade bs-example-modal-lg" id="ctsModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">章节预览</h4>
+            </div>
+            <div class="modal-body" style="text-align:center"  id='ctsimgcontent'>
+                <div >
+                    <img id="ctsimgurl" style="width: 500px;height: 300px;">
+                </div>
+                <a onclick="lastpage()" >上一页</a>
+                <a onclick="nextpage()" >下一页</a>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade bs-example-modal-lg" id="coverinfos" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" data-backdrop="static" data-keyboard="false" >
+  <div class="modal-dialog modal-lg" role="document" style="width: 900px;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="">章节封面截取</h4>
+      </div>
+      <div class="modal-body" >
+        <div class="row" style="margin-top:10px;margin-bottom:10px">
+          <ul class="clear tab_ul">
+            <?php
+            foreach($platformcoversizeinfos as $pformvsinfo)
+            {
+              echo sprintf('<li  class="floatl light-blue">
+            <a href="javascript:;" style="background-color:white;color:gray;" class="color" id="verticalcolor%d" onclick="showcontainer(%d,%s,%s)">%s(%s)</a></li>',
+            $pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['width'],$pformvsinfo['heigth'],$pformvsinfo['name'],$pformvsinfo['size']);
+            }
+            ?>
+          </ul>
+          <?php
+            foreach($platformcoversizeinfos as $pformvsinfo)
+            {
+              echo sprintf(' <div class="platform" id="platform%d" style=" display: none;margin-top:30px;" >
+                  <img src="%s-origin" id="platformverticalimg%d" class="platformverticalimg" style="width:100%%">
+                  </div>
+        <input type="hidden" id="%dvertical" class="vertical">
+        <div><img id="base64%d" style="display: none;width:100%%" class="base64"></div>
+        <input id="cutout%d" class="cutout" onclick="cutout(%d,%d,%d)" value="截取图片并上传" type="button" style="display: none;">',
+        $pformvsinfo['pfid'],GetItemFromArray($ctsinfo,'ctscover'),$pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['pfid'],$pformvsinfo['width'],
+        $pformvsinfo['heigth'],$pformvsinfo['pfid'],$pformvsinfo['pfid']);
+        }
+        ?>
+        </div>
+      </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取消</button>
+    </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- 切图 -->
+<div class="modal fade bs-example-modal-lg" id="cutimageModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content" style="700px">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">章节内容切图</h4>
+            </div>
+            <div class="modal-body" style="text-align:center;padding:5px">
+              <p style="text-align:left">在图片上点击会出现一条横线，横线作为内容切分点，横线的右边有删除按钮，可以删除切分点。图片的宽度在800至880之间。</p>
+              <div class="row">
+                <div class="col-sm-10" style="padding:0px" >
+                  <img src="" style="width:100%;cursor:url('/assets/images/scissors.ico'),auto" id="cutimg"  />
+                  <div id="linelist"></div>
+                </div>
+                <div class="col-sm-2" id="dellist" style="padding-left:5px;padding-right:0px">
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <div class="row">
+                <div class="col-sm-6">
+                  <button id="cutsavebtn" type="button" class="btn btn-primary btn-sm" onclick="cutimage();" >保存切图结果</button>
+                </div>
+                <div class="col-sm-6" style="<?php if($copy==1){ ?>display:none<?php } ?>">
+                  <div class="btn-group dropup" style="margin-left:20px">
+                    <button data-toggle="dropdown" class="btn btn-primary btn-sm dropdown-toggle" id="specutsavebtn" style="border-width:4px">
+                      特别版
+                      <i class="icon-angle-down icon-on-right"></i>
+                    </button>
+                    <ul class="dropdown-menu" style="min-width:unset">
+                      <?php foreach($speplatforminfos as $row) { 
+                       echo sprintf('<li data-id="%s" style="padding:4px 10px;cursor:pointer" onclick="speclick(this);">%s</li>', $row['pfid'], $row['name']);
+                       } ?>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+                <!--<button id="specutsavebtn" type="button" class="btn btn-primary btn-sm" onclick="cutimage();" style="margin-left:10px">特别版</button>-->
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- 预览 -->
+<div class="modal fade bs-example-modal-lg" id="tailModal" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">尾桢</h4>
+            </div>
+            <div class="modal-body" style="text-align:center"  id='ctstailframe'>
+              
+              <div class="row">
+              <?php
+              foreach($tailplatforminfos as $pfid=>$name){
+                echo sprintf('<input id="tailimage-%d" type=\'file\' accept="image/*" style="display:none" onchange="uploadimage(this);"/><div class="col-sm-4"><span>%s</span><img id="tailimage-img-%d" src="%s" style="width:100%%;height:150px" onclick="$(\'#tailimage-%d\').trigger(\'click\');"></div>',
+                  $pfid,$name, $pfid, isset($ctstailframeinfos[$pfid])?$ctstailframeinfos[$pfid]['imgurl'].'-origin':'/assets/images/button_add.png', $pfid, $pfid);
+              }
+              ?>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-primary btn-sm" data-dismiss="modal">确定</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<form style="display:none" id="downform" action="/action/cartoonaction.php" method="POST">
+  <input type="hidden" name="type" value="downsectionimgs" />
+  <input type="hidden" name="ctsid" value="<?php echo $ctsid;?>" />
+  <input type="hidden" id="images" name="images" value="" />
+</form>
+
+<div style="display:none;width:100px;height:150px;position:absolute;background-color:#ddd;opacity: 0.8;text-align:center" id="maskdiv">
+  <input id="maskimage" type="file" accept="image/*" onchange="replaceimage()" style="display:none"/>
+  <a class="btn btn-primary btn-sm" style="margin-top:50px" onclick="$('#maskimage').trigger('click');">替换</a>
+</div>
+
+<script>
+var pfids = <?php echo json_encode(GetItemsFromArray($platforminfos,'pfid'));?>;
+var imgcount = <?php echo count($imgs)?>;
+  $('#ctsname').validatebox({
+    //required: true,
+    validType: 'email'
+    /*missingMessage:"提示"*/
+  });
+
+var uploadimgcount = 0;
+var curimgid;
+var curimgindex = 0;
+var curuploading = false;
+function uploadimage(obj)
+{
+  var id = obj.id;
+  if(id == 'cover')
+  {
+    uploadoneimageex(document.getElementById(id).files[0], id);
+  }
+  else if(id == 'sectionimgbefore')
+  {
+    uploadoneimageex(document.getElementById(id).files[0], id);
+  }
+  else
+  {
+    if(id.indexOf('tailimage-') == 0){
+      uploadoneimageex(document.getElementById(id).files[0], id);
+    }else{
+      curimgindex = 0;
+      uploadimgcount = document.getElementById(id).files.length;
+      $('#tip').html('0/'+uploadimgcount);
+      curimgindex = 0;
+      curimgid = id;
+      setInterval('uploadmultiimage();',50);
+    }
+  }
+  //var fd = new FormData();
+  /*fd.append("image", document.getElementById(id).files[0]);
+  fd.append("type", "uploadimage");
+  fd.append("subtype", 'cartoon');
+  fd.append("objid", id);
+  var xhr = new XMLHttpRequest();
+  xhr.upload.addEventListener("progress", uploadProgress, false);
+  xhr.addEventListener("load", uploadComplete, false);
+  xhr.addEventListener("error", uploadFailed, false);
+  xhr.addEventListener("abort", uploadCanceled, false);
+  xhr.open("POST", "/action/funcaction.php");
+  xhr.send(fd);*/
+}
+
+function uploadmultiimage()
+{
+  if(!curuploading && curimgindex<uploadimgcount)
+  {
+    $('#tip').html((curimgindex+1)+'/'+uploadimgcount);
+    uploadoneimage(document.getElementById(curimgid).files[curimgindex] , curimgid);
+  }
+  if(curimgindex >= uploadimgcount)
+  {
+    $('#tip').html('完成');
+    $('#sectionimg').val('');
+  }
+    
+}
+
+function uploadoneimage(file,id)
+{
+  curuploading = true;
+  var fd = new FormData();
+  fd.append("image", file);
+  fd.append("type", "uploadimage");
+  fd.append("subtype", 'cartoon');
+  fd.append("objid", id);
+  var xhr = new XMLHttpRequest();
+  xhr.upload.addEventListener("progress", uploadProgress, false);
+  xhr.addEventListener("load", uploadComplete, false);
+  xhr.addEventListener("error", uploadFailed, false);
+  xhr.addEventListener("abort", uploadCanceled, false);
+  xhr.open("POST", "/action/funcaction.php");
+  xhr.send(fd);
+}
+
+function uploadProgress(evt) {
+    console.log(evt);
+    var val = evt.loaded*100/evt.total;
+    val = val.toFixed(0);
+    $('#tip').html((curimgindex+1)+'/'+uploadimgcount+'('+val+'%)');
+}
+function uploadComplete(evt) {
+  /* This event is raised when the server send back a response */
+  var data = eval('('+evt.target.responseText+')');
+  if(data.retno == 0)
+  {
+    if(data.objid == 'cover')
+    {
+      $('#'+data.objid+'div').hide();
+      $('#cts'+data.objid).val(data.result.url);
+      $('#'+data.objid+'img').attr('src',data.result.url + '-origin');
+      $('#'+data.objid+'img').show();
+        $('#covertip').html('完成');
+      curuploading = false;
+    }
+    else if(data.objid == 'sectionimgbefore')
+    {
+      var sectstr = $('#ctscontent').val();
+      var ctscontent = new Array();
+      if(sectstr.length > 0)
+        ctscontent = JSON.parse(sectstr);
+      ctscontent.insert(0,{'imgurl':data.result.url,'filename':data.result.filename});
+
+      $('#ctscontent').val(JSON.stringify(ctscontent));
+      var ht = '<div class="col-md-2" style="float:left;text-align:center"><img src="'+data.result.url+'-origin" style="width:100px;height:150px;display:block" id="imgid'+imgcount+'"  onmouseover="mouseoverfunc(%d)" /><div style="overflow: hidden;text-overflow: ellipsis;white-space: nowrap;">'+data.result.filename+'</div><input id="imginput'+imgcount+'" type="checkbox" class="imginput" value="'+imgcount+'" /></div>';
+      $('#sectionlist').prepend(ht);
+      curuploading = false;
+      ++imgcount;
+    }
+    else
+    {
+      var id = data.objid;
+      if(id.indexOf('tailimage-') == 0){
+        var pfid = id.substr(10);
+        $('#tailimage-img-'+pfid).attr('src',data.result.url + '-origin');
+        $('#covertip').html('完成');
+        if(!tailframeinfos.hasOwnProperty(pfid))
+          tailframeinfos[pfid] = {};
+        tailframeinfos[pfid]['imgurl'] = data.result.url;
+        tailframeinfos[pfid]['filename'] = data.result.filename;
+        $('#ctstailframeinfos').val(JSON.stringify(tailframeinfos));
+        curuploading = false;
+      }else{
+        var sectstr = $('#ctscontent').val();
+        var ctscontent = new Array();
+
+        if(sectstr.length > 0)
+          ctscontent = JSON.parse(sectstr);
+        ctscontent.push({'imgurl':data.result.url,'filename':data.result.filename});
+
+        $('#ctscontent').val(JSON.stringify(ctscontent));
+        var ht = '<div class="col-md-2" style="float:left;text-align:center"><img src="'+data.result.url+'-origin" style="width:100px;height:150px;display:block" id="imgid'+imgcount+'"  onmouseover="mouseoverfunc(%d)" /><div style="overflow: hidden;text-overflow: ellipsis;white-space: nowrap;">'+data.result.filename+'</div><input id="imginput'+imgcount+'" type="checkbox" class="imginput" value="'+imgcount+'" /></div>';
+        $('#sectionlist').append(ht);
+        curuploading = false;
+        ++curimgindex;
+        ++imgcount;
+        //$('#sectionlist').append('<img src="'+data.result+'" style="width:100px;height:150px"/>');
+      }
+    }
+  }
+  else
+  {
+    alert(data.msg);
+  }
+}
+function uploadFailed(evt){alert("There was an error attempting to upload the file.");}
+function uploadCanceled(evt){alert("The upload has been canceled.");}
+
+
+function uploadoneimageex(file,id)
+{
+  curuploading = true;
+  var fd = new FormData();
+  fd.append("image", file);
+  fd.append("type", "uploadimage");
+  fd.append("subtype", 'cartoon');
+  fd.append("objid", id);
+  var xhr = new XMLHttpRequest();
+  xhr.upload.addEventListener("progress", uploadProgressex, false);
+  xhr.addEventListener("load", uploadComplete, false);
+  xhr.addEventListener("error", uploadFailed, false);
+  xhr.addEventListener("abort", uploadCanceled, false);
+  xhr.open("POST", "/action/funcaction.php");
+  xhr.send(fd);
+}
+
+function uploadProgressex(evt) {
+  var val = evt.loaded*100/evt.total;
+  val = val.toFixed(0);
+  $('#covertip').html(val+'%');
+}
+function submit()
+{
+  if(curuploading)
+  {
+    alert('正在上传，请稍后重试');
+    return false;
+  }
+
+  var sectstr = $('#ctscontent').val();
+  var ctsname = $('#ctsname').val();
+  var ctsstate = $("input[name='ctsstate']:checked").val();
+  var ctsvip = $("input[name='ctsvip']:checked").val();
+  $('#ctsplatformcoverinfos').val(JSON.stringify(platformcoverinfos));
+  if(checkitemnull(ctsname,'章节名称') )
+  {
+    if(ctsstate == undefined)
+    {
+      alert('选择显示状态'); return;
+    }
+    if(sectstr.length > 0)
+    {
+      <?php
+      $params = '$("#submit").serialize()';
+      echo generate_ajax($params,'sectioninfocb','/action/cartoonaction.php');
+      ?>
+
+        return false;
+    }
+    else
+      alert('请上传图片');
+  }
+
+}
+  /*  */
+  function checkitemnull(str, viewstr)
+  {
+    if((str!=null) && (str.length>0))
+      return true;
+    else
+    {
+      alert(viewstr+"为空");
+      return false;
+    }
+  }
+function sectioninfocb()
+{
+  alert('保存成功');
+  window.location.href="sectionlist.html?ctid=<?php echo $ctid;?>";
+}
+</script>
+  <script>
+Array.prototype.insert = function (index, item) {
+  this.splice(index, 0, item);
+};
+function allclick(obj)
+{
+  if(obj.checked)
+  {
+    //$('.imginput').attr('checked','checked');
+    $('.imginput').each(function(){
+      this.checked = true;
+    });
+  }
+  else
+  {
+    $('.imginput').removeAttr('checked');
+  }
+}
+
+function deleteselected()
+{
+  if(confirm('确认删除？'))
+  {
+    var ctscontent = new Array();
+    $('.imginput').each(function(){
+      if(this.checked)
+      {
+        $(this).parent().remove();
+      }
+      else
+      {
+        var imgurl = $('#imgid'+this.value).attr('src');
+        imgurl = imgurl.replace('-origin','');
+        ctscontent.push({'imgurl':imgurl});
+      }
+    });
+    $('#ctscontent').val(JSON.stringify(ctscontent));
+  }
+}
+
+function downsectionimgs()
+{
+  var ctscontent = $('#ctscontent').val();
+  var imgs = JSON.stringify(ctscontent);
+  if(imgs.length > 0)
+  {
+    $('#images').val(ctscontent);
+    $('#downform').submit();
+  }
+  else
+  {
+    alert('没有可下载图片');
+  }
+}
+
+function preview()
+{
+  var ctscontent = $('#ctscontent').val();
+  if(ctscontent.length > 0)
+  {
+    var imgs = JSON.parse(ctscontent);
+
+    var ht = '';
+    for(var i in imgs)
+    {
+      if(i == 'insert')
+        continue;
+      ht += '<img src="'+imgs[i]['imgurl']+'-origin" style="width:100%;margin-bottom:0px">';
+      //ht += '<hr>';
+    }
+    $('#ctsimgcontent').html(ht);
+    $('#ctsModal').modal('show');
+  }
+  else
+  {
+    alert('没有图片。无法预览哦');
+  }
+}
+
+function addsectionimg()
+{
+  if((uploadimgcount>0) && (curimgindex < uploadimgcount))
+  {
+    alert('上一次没有上传完成，请上传完成以后再提交');
+  }
+  else
+  {
+    $('#sectionimg').trigger('click');
+  }
+}
+
+function addsectionbeforeimg()
+{
+  if((uploadimgcount>0) && (curimgindex < uploadimgcount))
+  {
+    alert('上一次没有上传完成，请上传完成以后再提交');
+  }
+  else
+  {
+    $('#sectionimgbefore').trigger('click');
+  }
+}
+
+function cutcover()
+{
+  /*for(var i in pfids)
+  {
+    $('#platform'+pfids[i]).hide();
+    $img = $('#platformverticalimg'+pfids[i]);
+    $img.cropper('clear');
+    $img.cropper('reset');
+    $img.cropper('destroy');
+  }*/
+
+  $('.platformverticalimg').attr('src',$('#coverimg').attr('src'));
+  $('#coverinfos').modal('show');
+}
+  </script>
+<link  href="/assets/js/cropper.css" rel="stylesheet">
+<script src="/assets/js/cropper.js"></script>
+  <script>
+function showcontainer(id,width,heigth)
+  {
+    $img = $('#platformverticalimg'+id);
+    $('.color').css('color','gray');
+    $('#verticalcolor'+id).css('color','red');
+    $('.platform').hide();
+    $('#platform'+id).show();
+    //var $img = $('#platformverticalimg'+id);
+
+    $('.cutout').hide();
+    $('#cutout'+id).show();
+    $('.uplodimg').hide();
+    $('#uplodimg'+id).show();
+    $('.base64').hide();
+    $('.base64').html('');
+    $('.vertical').val('');
+    /*  1500*880 */
+    $img.cropper({
+      aspectRatio: width/heigth,
+      cropBoxResizable :true, /*  设置裁剪框不可改变大小 /*/
+      zoomOnWheel:false,
+      crop: function(data) {
+        // Output the result data for cropping image.
+      }
+    });
+  }
+
+  function getsizecontain(width,height)
+  {
+    var base;
+    var quality = 1;
+    var base64 = $img.cropper('getCroppedCanvas',{width:width,height:height});
+    while(true){
+      base = base64.toDataURL('image/jpeg', quality);
+      if(base.length*3/4 > 150*1024)
+      {
+        quality -= 0.05;
+      }
+      else
+      {
+        break;
+      }
+      if(quality < 0.1)
+        break;
+    }
+    return base;
+  }
+
+  /* 获取截取的图片信息 */
+  function cutout(id,width,heigth)
+  {
+    var base64 = $img.cropper('getCroppedCanvas',{width:width,height:heigth});
+    //var ctx=base64.getContext('2d');
+    //ctx.fillStyle='#fff';
+    //ctx.fillRect(0,0,base64.width,base64.height);
+    var base = base64.toDataURL('image/png');
+    if(id == 3)
+    {
+      base = getsizecontain(width,heigth);
+    }
+    //alert(base);
+    $('#base64'+id).html(base64);
+    //$('#base64'+id).show();
+    var image = base;
+    var obj = id;
+    $('#'+id+'vertical').val(base);
+    var type = 'uploadbase64image';
+    <?php
+      $params = array('type','image','obj');
+      echo generate_ajax($params,'tishi','/action/funcaction.php');
+      ?>
+  }
+  /* 上传图片 */
+  function uplodimg(obj)
+  {
+    var image = $('#'+obj+'vertical').val();
+    var type = 'uploadbase64image';
+    if(checkitemnull(image,'上传图片'))
+    {
+      <?php
+      $params = array('type','image','obj');
+      echo generate_ajax($params,'tishi','/action/funcaction.php');
+      ?>
+    }
+  }
+
+var platformcoverinfos = <?php echo isset($ctsinfo['ctsplatformcoverinfos'])?$ctsinfo['ctsplatformcoverinfos']:'{}';?>;
+var tailframeinfos = <?php echo empty($ctsinfo['ctstailframeinfos'])?'{}':$ctsinfo['ctstailframeinfos'];?>;
+$('#ctstailframeinfos').val(JSON.stringify(tailframeinfos));
+
+  function tishi(data)
+  {
+    var id = data.obj;
+    var imgurl = data.imageurl;
+    platformcoverinfos[id] = {};
+    platformcoverinfos[id]['verticalimg'] = imgurl;
+    $('#base64'+id).attr('src',imgurl + '-origin');
+    $('#base64'+id).show();
+    alert('上传成功');
+
+  }
+  </script>
+  <script>
+$.ajaxSetup({
+  async : false
+});
+function addsectionimgcut()
+{
+  lineidx = 0;
+  lines = new Array();
+  $('#linelist').html('');
+  $('#dellist').html('');
+  $('#sectionimgcut').trigger('click');
+}
+
+var imgoriwidth = 0;
+var imgoriheight = 0;
+function uploadcutimage(obj)
+{
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    $('#cutimg').attr('src', reader.result);
+
+    var file = document.getElementById('sectionimgcut');
+    file.value = '';
+
+    var data = e.target.result;
+    var image = new Image();
+    image.onload=function(){
+      imgoriwidth = image.width;
+      imgoriheight = image.height;
+      if(imgoriwidth>=800 && imgoriwidth<=880){
+        $('#cutimageModal').modal('show');
+      }else{
+        alert('图片尺寸应该800和880之间，请处理后重新切图');
+      }
+    };
+    image.src= data;
+  }
+  var file = document.getElementById('sectionimgcut').files[0];
+  reader.readAsDataURL(file);
+}
+
+
+var lineidx = 0;
+var lines = new Array();
+$('#cutimg').click(function(e){
+  var data2 = getXAndY(e);
+  var x2 = data2.x;
+  var y2 = data2.y;
+
+  ++lineidx;
+  var ht = '<a id="delbtn'+lineidx+'" class="btn btn-primary btn-sm" style="position:absolute;left:5px;top:'+y2+'px" onclick="delhr('+lineidx+')">删除</a>';
+  $('#dellist').append(ht);
+  ht = '<hr id="hr'+lineidx+'" style="width:110%;position:absolute;top:'+y2+'px;border-color:#8a472d;margin:0px" />';
+  $('#linelist').append(ht);
+
+  lines.push({idx:lineidx, top:y2});
+});
+
+function delhr(lidx){
+  $('#delbtn'+lidx).hide();
+  $('#hr'+lidx).hide();
+}
+
+function deepCopy(p, c) {
+  var c = c || {};
+  for (var i in p) {
+    if (typeof p[i] === 'object') {
+      c[i] = (p[i].constructor === Array) ? [] : {};
+      deepCopy(p[i], c[i]);
+    } else {
+      c[i] = p[i];
+    }
+  }
+  return c;
+}
+
+function getsizecontain150k(canvas)
+{
+  var quality = 1;
+  while(true){
+    base = canvas2.toDataURL('image/jpeg', quality);
+    if(base.length*3/4 > 150*1024)
+    {
+      quality -= 0.05;
+    }
+    else
+    {
+      break;
+    }
+    if(quality < 0.1)
+      break;
+  }
+  return base;
+}
+
+function cutimage(){
+
+  if(lines.length == 0)
+  {
+    if(confirm('没有划线，确认自动划线？'))
+      ;
+    else
+      return false;
+  }
+
+  $('#cutsavebtn').html('保存中...');
+  $('#cutsavebtn').attr('disabled','disabled');
+  $('#specutsavebtn').attr('disabled','disabled');
+
+  var newlines = new Array();
+  if(lines.length == 0)
+  {
+    newlines.push({idx:0,top:0});
+    for(var i=0; i<parseInt(imgoriheight/750); ++i)
+      newlines.push({idx:i+1, top:(i+1)*750});
+    newlines.push({idx:i,top:imgoriheight});
+  }
+  else
+  {
+    var count = 0;
+    var width = $('#cutimg')[0].width;
+    var height = $('#cutimg')[0].height;
+    newlines.push({idx:0,top:0});
+    for(var i in lines){
+      if(i == 'insert')
+        continue;
+      if(!$('#delbtn'+lines[i].idx).is(':hidden')){
+        ++count;
+        newlines.push(deepCopy(lines[i]));
+      }
+    }
+
+    newlines = newlines.sort(function(l1,l2){
+      return l1.top-l2.top;
+    });
+
+    console.log(newlines);
+    for(var i in newlines)
+    {
+      newlines[i].top = parseInt(newlines[i].top*imgoriwidth/width);
+    }
+    console.log(newlines);
+    newlines.push({idx:-1,top:imgoriheight});
+  }
+
+  $('#canvas1').attr('width',imgoriwidth+'px');
+  $('#canvas1').attr('height',imgoriheight+'px');
+  $('#canvas2').attr('width',imgoriwidth+'px');
+
+  var cnt1 = canvas1.getContext('2d');
+  cnt1.drawImage($('#cutimg')[0],0,0,imgoriwidth,imgoriheight);
+  var newimgs = new Array();
+  for(var i=0; i<newlines.length-1;++i){
+    ++imgcount;
+    var newheight = newlines[i+1].top-newlines[i].top;
+    var imgdata = cnt1.getImageData(0,newlines[i].top, imgoriwidth, newheight);
+    var cnt2 = canvas2.getContext('2d');
+    $('#canvas2').attr('height',newheight+'px');
+    cnt2.putImageData(imgdata,0,0,0,0,imgoriwidth,newheight);
+    //var base64 = canvas2.toDataURL('image/png',1);
+    var base64 = getsizecontain150k(canvas2);
+
+
+    var image = base64;
+    var type = 'uploadbase64image';
+    var obj = imgcount;
+    var imageurl = '';
+    //$.post("/action/funcaction.php",  {type:type,image:base64,obj:obj},
+    $.ajax({url:'/action/funcaction.php', data:{type:type,image:base64,obj:obj},async:true,type:'POST',dataType:'json',success:
+      function(data){
+        newimgs.push(data);
+        /*imageurl = data.imageurl;
+        var sectstr = $('#ctscontent').val();
+        var ctscontent = new Array();
+
+        if(sectstr.length > 0)
+          ctscontent = JSON.parse(sectstr);
+        ctscontent.push({'imgurl':imageurl,'filename':data.obj+'.jpg'});
+        $('#ctscontent').val(JSON.stringify(ctscontent));
+
+        var ht = '<div class="col-md-2" style="float:left;text-align:center"><img src="'+imageurl+'" style="width:100px;height:150px;display:block" id="imgid'+data.obj+'" /><div style="overflow: hidden;text-overflow: ellipsis;white-space: nowrap;">'+data.obj+'.jpg</div><input id="imginput'+data.obj+'" type="checkbox" class="imginput" value="'+data.obj+'" /></div>';
+        $('#sectionlist').append(ht);*/
+      
+        if(newimgs.length >= newlines.length-1){
+          newimgs.sort(function(a,b){
+            var i1 = parseInt(a.obj);
+            var i2 = parseInt(b.obj);
+            return i1-i2;
+          });
+          for(var i in newimgs){
+            if(i == 'insert')
+              continue;
+            newdata = newimgs[i];
+            imageurl = newdata.imageurl;
+            var sectstr = $('#ctscontent').val();
+            var ctscontent = new Array();
+
+            if(sectstr.length > 0)
+              ctscontent = JSON.parse(sectstr);
+            ctscontent.push({'imgurl':imageurl,'filename':newdata.obj+'.jpg'});
+            $('#ctscontent').val(JSON.stringify(ctscontent));
+
+            var ht = '<div class="col-md-2" style="float:left;text-align:center"><img src="'+imageurl+'-origin" style="width:100px;height:150px;display:block" id="imgid'+newdata.obj+'" /><div style="overflow: hidden;text-overflow: ellipsis;white-space: nowrap;">'+newdata.obj+'.jpg</div><input id="imginput'+newdata.obj+'" type="checkbox" class="imginput" value="'+newdata.obj+'" /></div>';
+            $('#sectionlist').append(ht);
+          }
+
+          $('#cutimageModal').modal('hide');
+          $('#cutsavebtn').html('保存切图结果');
+          $('#cutsavebtn').removeAttr('disabled');
+          $('#specutsavebtn').removeAttr('disabled');
+        }
+      }
+    });
+
+  }
+
+}
+
+function secondtominute(s)
+{
+  var str = '';
+  if(s > 60)
+    str = s/60+'分'+s%60+'秒';
+  else
+    str = s+'秒';
+  return str;
+}
+
+function getXAndY(event){
+  //鼠标点击的绝对位置
+  Ev= event || window.event;
+  var mousePos = mouseCoords(event);
+  var x = mousePos.x;
+  var y = mousePos.y;
+  //alert("鼠标点击的绝对位置坐标："+x+","+y);
+
+  //获取div在body中的绝对位置
+  var x1 = $("#cutimg").offset().left;
+  var y1 = $("#cutimg").offset().top;
+  //alert("div在body中的绝对位置坐标："+x1+","+y1);
+
+  //鼠标点击位置相对于div的坐标
+  var x2 = x - x1;
+  var y2 = y - y1;
+  return {x:x2,y:y2};
+}
+
+//获取鼠标点击区域在Html绝对位置坐标
+function mouseCoords(event){
+  if(event.pageX || event.pageY){
+    return {x:event.pageX, y:event.pageY};
+  }
+  return{
+    x:event.clientX + document.body.scrollLeft - document.body.clientLeft,
+    y:event.clientY + document.body.scrollTop - document.body.clientTop
+  };
+}
+  </script>
+  <script>
+var specversions = {};
+function speclick(obj)
+{
+  var pfid = $(obj).attr('data-id');
+  $(obj).css('background-color','#8a472d');
+  $(obj).css('color','white');
+  if(lines.length == 0)
+  {
+    alert('没有划线，请划线');
+    return false;
+  }
+
+  $('#specutsavebtn').html('保存中...');
+  $('#cutsavebtn').attr('disabled','disabled');
+  $('#specutsavebtn').attr('disabled','disabled');
+
+  setTimeout(function(){
+    var newlines = new Array();
+    {
+      var count = 0;
+      var width = $('#cutimg')[0].width;
+      var height = $('#cutimg')[0].height;
+      newlines.push({idx:0,top:0});
+      for(var i in lines){
+        if(i == 'insert')
+          continue;
+        if(!$('#delbtn'+lines[i].idx).is(':hidden')){
+          ++count;
+          newlines.push(deepCopy(lines[i]));
+        }
+      }
+
+      newlines = newlines.sort(function(l1,l2){
+        return l1.top-l2.top;
+      });
+
+      console.log(newlines);
+      for(var i in newlines)
+      {
+        newlines[i].top = parseInt(newlines[i].top*imgoriwidth/width);
+      }
+      console.log(newlines);
+      newlines.push({idx:-1,top:imgoriheight});
+    }
+
+    $('#canvas1').attr('width',imgoriwidth+'px');
+    $('#canvas1').attr('height',imgoriheight+'px');
+    $('#canvas2').attr('width',imgoriwidth+'px');
+
+    var cnt1 = canvas1.getContext('2d');
+    cnt1.drawImage($('#cutimg')[0],0,0,imgoriwidth,imgoriheight);
+    var newimgs = new Array();
+    for(var i=0; i<newlines.length-1;++i){
+      var newheight = newlines[i+1].top-newlines[i].top;
+      var imgdata = cnt1.getImageData(0,newlines[i].top, imgoriwidth, newheight);
+      var cnt2 = canvas2.getContext('2d');
+      $('#canvas2').attr('height',newheight+'px');
+      cnt2.putImageData(imgdata,0,0,0,0,imgoriwidth,newheight);
+      //var base64 = canvas2.toDataURL('image/png',1);
+      var base64 = getsizecontain150k(canvas2);
+
+      var image = base64;
+      var type = 'uploadbase64image';
+      var obj = i;
+      var imageurl = '';
+      //setTimeout(function(){
+      $.ajax({url:'/action/funcaction.php', data:{type:type,image:base64,obj:obj},async:false,type:'POST',dataType:'json',success:
+        function(data){
+          newimgs.push(data);
+
+          if(newimgs.length >= newlines.length-1){
+            if(!specversions.hasOwnProperty(pfid))
+              specversions[pfid] = new Array();
+            for(var j in newimgs)
+            {
+              if(j != 'insert')
+                specversions[pfid].push(newimgs[j]);
+            }
+            $('#specversions').val(JSON.stringify(specversions));
+            newimgs.sort(function(a,b){
+              var i1 = parseInt(a.obj);
+              var i2 = parseInt(b.obj);
+              return i1-i2;
+            });
+
+            $('#specutsavebtn').html('特别版<i class="icon-angle-down icon-on-right"></i>');
+            $('#cutsavebtn').removeAttr('disabled');
+            $('#specutsavebtn').removeAttr('disabled');
+            alert('保存成功');
+          }
+        }
+      });
+      //},500);
+    }
+  },500);
+}
+
+function clickvip(){
+  alert('作品开始计费必须和所有平台商务沟通才能保证计费成功');
+}
+
+function opentail(){
+  $('#tailModal').modal('show');
+}
+
+function replaceimage(){
+  //curuploading = true;
+  var file = document.getElementById('maskimage').files[0];
+  var fd = new FormData();
+  fd.append("image", file);
+  fd.append("type", "uploadimage");
+  fd.append("subtype", 'cartoon');
+  fd.append("objid", curimgid);
+  var xhr = new XMLHttpRequest();
+  xhr.upload.addEventListener("progress", uploadProgress, false);
+  xhr.addEventListener("load", uploadCompleteRe, false);
+  xhr.addEventListener("error", uploadFailed, false);
+  xhr.addEventListener("abort", uploadCanceled, false);
+  xhr.open("POST", "/action/funcaction.php");
+  xhr.send(fd);
+}
+
+function uploadCompleteRe(evt) {
+  /* This event is raised when the server send back a response */
+  var data = eval('('+evt.target.responseText+')');
+  if(data.retno == 0)
+  {
+    $('#imgid'+data.objid).attr('src', data.result.url);
+    var idx=0;
+    var exist = false;
+    $('.col-md-2').each(function(){
+      if(!exist){
+        if($(this).find('img')[0].id == 'imgid'+data.objid){
+          exist = true;
+        }else{
+          ++idx;
+        }
+      }
+    });
+
+    var sectstr = $('#ctscontent').val();
+    ctscontent = JSON.parse(sectstr);
+    ctscontent[idx].imgurl=data.result.url;
+    $('#ctscontent').val(JSON.stringify(ctscontent));
+
+  }
+}
+
+var curimgid = -1;
+function mouseoverfunc(idx){
+  var os = $('#imgid'+idx).offset();
+  $('#maskdiv').css('left',os.left+'px');
+  $('#maskdiv').css('top',os.top+'px');
+  $('#maskdiv').show();
+  curimgid = idx;
+}
+
+  </script>
+  <canvas id="canvas1" style="display:none"></canvas>
+  <canvas id="canvas2" style="display:none"></canvas>
+</body>
+</html>
